@@ -39,7 +39,7 @@ export default function ToastProvider() {
             <motion.div
               key={toast.id}
               layout
-              initial={{ opacity: 0, x: 50, scale: 0.95 }}
+              initial={false}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}

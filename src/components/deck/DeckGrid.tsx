@@ -51,7 +51,7 @@ export default function DeckGrid({ decks, className = "" }: DeckGridProps) {
         return (
           <Link key={deck.id} href={`/decks/${deck.id}`}>
             <motion.article
-              initial={{ opacity: 0, y: 10 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               whileHover={{ y: -2 }}
@@ -79,7 +79,7 @@ export default function DeckGrid({ decks, className = "" }: DeckGridProps) {
 
               <div className="mt-auto pt-2">
                 {masteryBar}
-                <p className="mt-3 text-[11px] text-zinc-500">
+                <p className="mt-3 text-[11px] text-zinc-500" suppressHydrationWarning>
                   {deck.lastTouchedAt
                     ? `Last studied ${formatRelativeDate(new Date(deck.lastTouchedAt))} ago`
                     : "Never studied"}

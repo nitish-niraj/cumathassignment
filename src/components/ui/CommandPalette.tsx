@@ -123,7 +123,7 @@ export default function CommandPalette() {
         <div className="fixed inset-0 z-50 flex pt-[10vh] items-start justify-center">
           {/* Backdrop */}
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={close}
@@ -132,7 +132,7 @@ export default function CommandPalette() {
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -20 }}
+            initial={false}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             transition={{ duration: 0.2, ease: "easeOut" }}

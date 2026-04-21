@@ -308,7 +308,7 @@ export default function StudySessionShell({
       {/* Card area */}
       <main className="flex min-h-[calc(100vh-64px)] flex-col items-center justify-center gap-8 px-5 py-10">
         {/* Animated card swap */}
-        <AnimatePresence mode="wait" custom={direction}>
+        <AnimatePresence initial={false} mode="wait" custom={direction}>
           <motion.div
             key={currentCard?.id ?? "empty"}
             custom={direction}
@@ -317,7 +317,7 @@ export default function StudySessionShell({
               center: { x: 0, opacity: 1 },
               exit: (d: number) => ({ x: d > 0 ? -60 : 60, opacity: 0 }),
             }}
-            initial="enter"
+            initial={false}
             animate="center"
             exit="exit"
             transition={{ duration: 0.28, ease: [0.32, 0, 0.67, 0] }}
@@ -337,10 +337,10 @@ export default function StudySessionShell({
         </AnimatePresence>
 
         {/* Flip hint */}
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {!isFlipped && (
             <motion.p
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="text-xs text-zinc-600"
@@ -351,10 +351,10 @@ export default function StudySessionShell({
         </AnimatePresence>
 
         {/* Rating buttons */}
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {isFlipped && (
             <motion.div
-              initial="hidden"
+              initial={false}
               animate="show"
               exit="hidden"
               variants={{
@@ -385,17 +385,17 @@ export default function StudySessionShell({
       </main>
 
       {/* End session confirm dialog */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {showConfirm && (
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 px-6 backdrop-blur-sm"
             onClick={() => setShowConfirm(false)}
           >
             <motion.div
-              initial={{ scale: 0.92, opacity: 0 }}
+              initial={false}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.92, opacity: 0 }}
               transition={{ type: "spring", stiffness: 320, damping: 26 }}

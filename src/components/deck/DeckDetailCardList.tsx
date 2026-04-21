@@ -210,7 +210,7 @@ export default function DeckDetailCardList({ deckId, cards: initialCards }: Deck
           {filteredCards.length === 0 ? (
             <motion.div
               layout
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="py-10 text-center text-zinc-500"
@@ -226,7 +226,7 @@ export default function DeckDetailCardList({ deckId, cards: initialCards }: Deck
                 <motion.div
                   layout
                   key={card.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={false}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   className={`overflow-hidden rounded-2xl border bg-zinc-900/60 backdrop-blur-xl transition-colors ${
@@ -325,7 +325,7 @@ export default function DeckDetailCardList({ deckId, cards: initialCards }: Deck
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
-                        initial={{ height: 0, opacity: 0 }}
+                        initial={false}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}

@@ -1,4 +1,13 @@
-import { getDocument, type PDFDocumentProxy } from "pdfjs-dist";
+import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from "pdfjs-dist";
+
+// Disable the web worker for Node.js / serverless environments.
+// Without this, pdfjs-dist tries to spawn a worker thread whose file
+// path doesn't exist inside Vercel's bundled function output.
+// Setting workerSrc to a non-empty string that is NOT a valid worker URL
+// causes pdfjs to fall back to running on the main thread without a worker.
+if (typeof window === "undefined") {
+  GlobalWorkerOptions.workerSrc = "data:text/javascript;chunk=pdfjs-disabled-worker";
+}
 
 export interface PDFResult {
   text: string;
@@ -18,6 +27,9 @@ export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
     data,
     // Disable font rendering — we only need text extraction
     useSystemFonts: true,
+    // Run on the main thread (no web worker) — required for serverless
+    useWorkerFetch: false,
+    isEvalSupported: false,
   }).promise;
 
   const pageCount = doc.numPages;

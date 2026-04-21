@@ -37,7 +37,7 @@ export default function DeckCard({ deck }: DeckCardProps) {
         <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-zinc-800">
           <motion.div
             className="h-full rounded-full bg-violet-500"
-            initial={{ width: 0 }}
+            initial={false}
             animate={{ width: `${mastery}%` }}
             transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
           />

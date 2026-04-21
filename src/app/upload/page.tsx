@@ -189,11 +189,11 @@ export default function UploadPage() {
       </section>
 
       {/* Error card */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {error && !isProcessing && (
           <motion.div
             key="error"
-            initial={{ opacity: 0, y: 8 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             className="flex flex-col gap-4 rounded-2xl border border-red-500/20 bg-red-500/5 p-6"
@@ -214,11 +214,11 @@ export default function UploadPage() {
       </AnimatePresence>
 
       {/* Form section — animates out when processing */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {!isProcessing && !result && (
           <motion.div
             key="form"
-            initial={{ opacity: 0, y: 12 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16, height: 0, marginTop: 0 }}
             transition={{ duration: 0.3 }}
@@ -268,11 +268,11 @@ export default function UploadPage() {
               </div>
 
               {/* Selected file bar */}
-              <AnimatePresence>
+              <AnimatePresence initial={false}>
                 {file && (
                   <motion.div
                     key="file-bar"
-                    initial={{ opacity: 0, height: 0 }}
+                    initial={false}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
@@ -351,11 +351,11 @@ export default function UploadPage() {
       </AnimatePresence>
 
       {/* Processing / Result card */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {(isProcessing || result) && !error && (
           <motion.div
             key="processing"
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.35 }}
@@ -377,11 +377,11 @@ export default function UploadPage() {
 
                 {/* Status message */}
                 <div className="flex min-h-12 flex-col items-center justify-center text-center">
-                  <AnimatePresence mode="wait">
+                  <AnimatePresence initial={false} mode="wait">
                     {result ? (
                       <motion.div
                         key="done"
-                        initial={{ scale: 0.8, opacity: 0 }}
+                        initial={false}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
                         className="flex flex-col items-center gap-4"
@@ -453,7 +453,7 @@ export default function UploadPage() {
                     ) : (
                       <motion.div
                         key={statusMessage}
-                        initial={{ opacity: 0, y: 6 }}
+                        initial={false}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.25 }}
