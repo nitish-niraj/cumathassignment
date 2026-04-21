@@ -1,4 +1,4 @@
-import { PDFParse } from "pdf-parse";
+import pdfParse from "pdf-parse";
 
 export interface PDFResult {
   text: string;
@@ -11,17 +11,9 @@ export interface PDFResult {
  * Uses pdf-parse for stable serverless compatibility.
  */
 export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
-  const parser = new PDFParse({ data: buffer });
-  let pageCount = 0;
-  let text = "";
-
-  try {
-    const parsed = await parser.getText();
-    pageCount = parsed.total ?? 0;
-    text = parsed.text ?? "";
-  } finally {
-    await parser.destroy().catch(() => {});
-  }
+  const parsed = await pdfParse(buffer);
+  const pageCount = parsed.numpages ?? 0;
+  let text = parsed.text ?? "";
 
   // Remove page number patterns like "Page 1 of 10", "1 / 10", "- 1 -"
   text = text.replace(/\bPage\s+\d+\s+of\s+\d+\b/gi, "");
