@@ -1,17 +1,10 @@
-import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from "pdfjs-dist";
-
-// Disable the web worker for Node.js / serverless environments.
-// Without this, pdfjs-dist tries to spawn a worker thread whose file
-// path doesn't exist inside Vercel's bundled function output.
-// We set workerSrc to empty string and workerPort to null per-call
-// to avoid "Invalid URL" / "fake worker" errors from pdfjs URL validation.
-if (typeof window === "undefined") {
-  GlobalWorkerOptions.workerSrc = "";
-  if ("workerPort" in GlobalWorkerOptions) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (GlobalWorkerOptions as any).workerPort = null;
-  }
-}
+// Use the legacy build for Node.js / serverless environments.
+// The legacy build does not require web workers and is designed to run
+// directly in Node.js, avoiding all "fake worker" and workerSrc errors.
+import {
+  getDocument,
+  type PDFDocumentProxy,
+} from "pdfjs-dist/legacy/build/pdf.mjs";
 
 export interface PDFResult {
   text: string;
@@ -25,44 +18,14 @@ export interface PDFResult {
  * reliably in Vercel serverless functions.
  */
 export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
-  // Ensure worker is disabled before every call (defense against any module-level reset)
-  GlobalWorkerOptions.workerSrc = "";
-  if ("workerPort" in GlobalWorkerOptions) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (GlobalWorkerOptions as any).workerPort = null;
-  }
-
   const data = new Uint8Array(buffer);
 
-  const getDocOptions = {
+  const doc: PDFDocumentProxy = await getDocument({
     data,
     useSystemFonts: true,
-    useWorkerFetch: false,
     isEvalSupported: false,
     disableAutoFetch: true,
-  };
-
-  let doc: PDFDocumentProxy;
-  try {
-    doc = await getDocument(getDocOptions).promise;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    // If the error is related to "Invalid URL" or "fake worker", retry with a
-    // maximally constrained fallback configuration on the main thread.
-    if (msg.includes("Invalid URL") || msg.includes("fake worker")) {
-      const fallbackData = new Uint8Array(buffer);
-      doc = await getDocument({
-        data: fallbackData,
-        useWorkerFetch: false,
-        isEvalSupported: false,
-        useSystemFonts: false,
-        disableAutoFetch: true,
-        disableFontFace: true,
-      }).promise;
-    } else {
-      throw err;
-    }
-  }
+  }).promise;
 
   const pageCount = doc.numPages;
   const pageTexts: string[] = [];

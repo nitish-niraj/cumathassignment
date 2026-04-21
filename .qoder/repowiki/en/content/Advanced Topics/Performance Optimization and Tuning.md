@@ -14,9 +14,20 @@
 - [src/app/api/upload/route.ts](file://src/app/api/upload/route.ts)
 - [src/lib/pdf.ts](file://src/lib/pdf.ts)
 - [src/lib/stats.ts](file://src/lib/stats.ts)
+- [src/components/shared/StudyHeatmap.tsx](file://src/components/shared/StudyHeatmap.tsx)
+- [src/components/stats/ActivityHeatmap.tsx](file://src/components/stats/ActivityHeatmap.tsx)
+- [src/app/page.tsx](file://src/app/page.tsx)
+- [src/app/stats/page.tsx](file://src/app/stats/page.tsx)
 - [prisma/schema.prisma](file://prisma/schema.prisma)
 - [prisma/migrations/20260421034221_init/migration.sql](file://prisma/migrations/20260421034221_init/migration.sql)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Enhanced React component optimization section with concrete useMemo implementation example from StudyHeatmap component
+- Added detailed analysis of memoization strategies for data transformation and rendering optimization
+- Updated component performance guidance with specific optimization patterns
+- Expanded practical examples of React performance optimization techniques
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -45,6 +56,10 @@ APICards["API Cards CRUD<br/>src/app/api/decks/[id]/cards/route.ts"]
 APIReview["API Review<br/>src/app/api/review/route.ts"]
 APIDeck["API Deck Update/Delete<br/>src/app/api/decks/[id]/route.ts"]
 Stats["Stats Utilities<br/>src/lib/stats.ts"]
+StudyHeatmap["Study Heatmap Component<br/>src/components/shared/StudyHeatmap.tsx"]
+ActivityHeatmap["Activity Heatmap Component<br/>src/components/stats/ActivityHeatmap.tsx"]
+HomePage["Home Page<br/>src/app/page.tsx"]
+StatsPage["Stats Page<br/>src/app/stats/page.tsx"]
 end
 subgraph "Libraries"
 DB["Prisma Client<br/>src/lib/db.ts"]
@@ -68,6 +83,10 @@ APIDeck --> DB
 Stats --> DB
 APIUpload --> PDF
 APIUpload --> DB
+StudyHeatmap --> Stats
+ActivityHeatmap --> Stats
+HomePage --> StudyHeatmap
+StatsPage --> ActivityHeatmap
 SupabaseClient --> SupabaseServer
 DB --> Schema
 Schema --> Migration
@@ -89,6 +108,10 @@ Package --> DB
 - [src/app/api/decks/[id]/route.ts](file://src/app/api/decks/[id]/route.ts#L1-L43)
 - [src/lib/stats.ts:1-222](file://src/lib/stats.ts#L1-L222)
 - [src/lib/pdf.ts:1-130](file://src/lib/pdf.ts#L1-L130)
+- [src/components/shared/StudyHeatmap.tsx:1-136](file://src/components/shared/StudyHeatmap.tsx#L1-L136)
+- [src/components/stats/ActivityHeatmap.tsx:1-74](file://src/components/stats/ActivityHeatmap.tsx#L1-L74)
+- [src/app/page.tsx:105-112](file://src/app/page.tsx#L105-L112)
+- [src/app/stats/page.tsx:149](file://src/app/stats/page.tsx#L149)
 - [prisma/schema.prisma:1-51](file://prisma/schema.prisma#L1-L51)
 - [prisma/migrations/20260421034221_init/migration.sql:1-42](file://prisma/migrations/20260421034221_init/migration.sql#L1-L42)
 
@@ -105,6 +128,10 @@ Package --> DB
 - [src/app/api/decks/[id]/route.ts](file://src/app/api/decks/[id]/route.ts#L1-L43)
 - [src/lib/stats.ts:1-222](file://src/lib/stats.ts#L1-L222)
 - [src/lib/pdf.ts:1-130](file://src/lib/pdf.ts#L1-L130)
+- [src/components/shared/StudyHeatmap.tsx:1-136](file://src/components/shared/StudyHeatmap.tsx#L1-L136)
+- [src/components/stats/ActivityHeatmap.tsx:1-74](file://src/components/stats/ActivityHeatmap.tsx#L1-L74)
+- [src/app/page.tsx:105-112](file://src/app/page.tsx#L105-L112)
+- [src/app/stats/page.tsx:149](file://src/app/stats/page.tsx#L149)
 - [prisma/schema.prisma:1-51](file://prisma/schema.prisma#L1-L51)
 - [prisma/migrations/20260421034221_init/migration.sql:1-42](file://prisma/migrations/20260421034221_init/migration.sql#L1-L42)
 
@@ -114,6 +141,7 @@ Package --> DB
 - API routes for CRUD operations, review scheduling updates, minimal deck listings, and PDF upload with streaming progress.
 - PDF parsing and text chunking optimized for serverless environments.
 - Statistics computations leveraging concurrent queries and efficient aggregation.
+- React components with memoization strategies for optimal rendering performance.
 
 **Section sources**
 - [src/lib/db.ts:1-68](file://src/lib/db.ts#L1-L68)
@@ -125,12 +153,14 @@ Package --> DB
 - [src/app/api/upload/route.ts:1-298](file://src/app/api/upload/route.ts#L1-L298)
 - [src/lib/pdf.ts:1-130](file://src/lib/pdf.ts#L1-L130)
 - [src/lib/stats.ts:1-222](file://src/lib/stats.ts#L1-L222)
+- [src/components/shared/StudyHeatmap.tsx:1-136](file://src/components/shared/StudyHeatmap.tsx#L1-L136)
 
 ## Architecture Overview
 The system integrates Next.js API routes with Prisma for data persistence and Supabase for SSR/SSG client interactions. PDF processing runs server-side with streaming responses to improve perceived latency. The architecture emphasizes:
 - Separation of concerns: API routes encapsulate business logic, Prisma handles persistence, and utilities handle specialized tasks.
 - Production-grade database connectivity with pooling and SSL enforcement.
 - Streaming pipelines for long-running operations like PDF parsing and AI generation.
+- Optimized React components with memoization for efficient rendering.
 
 ```mermaid
 graph TB
@@ -142,6 +172,8 @@ DB[("PostgreSQL")]
 Supabase["Supabase JS"]
 PDFJS["pdfjs-dist"]
 AI["OpenRouter/AI Provider"]
+StudyHM["Study Heatmap Component"]
+ActivityHM["Activity Heatmap Component"]
 Client --> NextApp
 NextApp --> API
 API --> Prisma
@@ -149,6 +181,8 @@ Prisma --> DB
 API --> Supabase
 API --> PDFJS
 API --> AI
+StudyHM --> Stats["Stats Utilities"]
+ActivityHM --> Stats
 ```
 
 **Diagram sources**
@@ -156,6 +190,9 @@ API --> AI
 - [src/lib/db.ts:1-68](file://src/lib/db.ts#L1-L68)
 - [src/utils/supabase/client.ts:1-11](file://src/utils/supabase/client.ts#L1-L11)
 - [src/lib/pdf.ts:1-130](file://src/lib/pdf.ts#L1-L130)
+- [src/lib/stats.ts:1-222](file://src/lib/stats.ts#L1-L222)
+- [src/components/shared/StudyHeatmap.tsx:1-136](file://src/components/shared/StudyHeatmap.tsx#L1-L136)
+- [src/components/stats/ActivityHeatmap.tsx:1-74](file://src/components/stats/ActivityHeatmap.tsx#L1-L74)
 - [package.json:18-42](file://package.json#L18-L42)
 
 ## Detailed Component Analysis
@@ -313,6 +350,77 @@ Aggregate --> Return(["Return Dashboard Payload"])
 **Section sources**
 - [src/lib/stats.ts:1-222](file://src/lib/stats.ts#L1-L222)
 
+### React Component Optimization with useMemo
+
+**Updated** Added concrete example of React useMemo optimization in StudyHeatmap component
+
+The StudyHeatmap component demonstrates best practices for React performance optimization through strategic useMemo usage:
+
+#### Data Transformation Memoization
+The component uses useMemo to optimize expensive data transformations:
+
+```typescript
+// Sort data chronologically once per render cycle
+const sortedData = useMemo(() => {
+  return [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}, [data]);
+
+// Transform flat array into 7-day columns
+const columns = useMemo(() => {
+  const cols = [];
+  for (let i = 0; i < sortedData.length; i += 7) {
+    cols.push(sortedData.slice(i, i + 7));
+  }
+  return cols;
+}, [sortedData]);
+```
+
+#### Derived State Memoization
+The component memoizes computed values that depend on props:
+
+```typescript
+// Generate month labels for column headers
+const monthLabels = useMemo(() => {
+  const labels: { label: string; colIndex: number }[] = [];
+  let currentMonth = "";
+  
+  columns.forEach((col, idx) => {
+    if (col.length > 0) {
+      const month = format(new Date(col[0].date), "MMM");
+      if (month !== currentMonth) {
+        labels.push({ label: month, colIndex: idx });
+        currentMonth = month;
+      }
+    }
+  });
+  
+  return labels;
+}, [columns]);
+```
+
+#### Performance Benefits
+- **Avoids redundant sorting**: Data is sorted only when input data changes
+- **Prevents unnecessary array transformations**: Column generation occurs only when sorted data changes
+- **Reduces DOM calculations**: Month labels are computed once per render cycle
+- **Optimizes rendering**: Stable references prevent unnecessary re-renders of child components
+
+```mermaid
+flowchart TD
+Input["Raw Heatmap Data"] --> Sort["Sort Chronologically"]
+Sort --> Columns["Transform to 7-Day Columns"]
+Columns --> Labels["Generate Month Labels"]
+Sort --> Memoized["Memoized Sorted Data"]
+Columns --> Memoized
+Labels --> Memoized
+Memoized --> Render["Render Heatmap Grid"]
+```
+
+**Diagram sources**
+- [src/components/shared/StudyHeatmap.tsx:24-60](file://src/components/shared/StudyHeatmap.tsx#L24-L60)
+
+**Section sources**
+- [src/components/shared/StudyHeatmap.tsx:1-136](file://src/components/shared/StudyHeatmap.tsx#L1-L136)
+
 ### Database Schema and Indexing Strategies
 - Domain models: Deck, Card, ReviewLog with foreign keys and timestamps.
 - Missing indexes: nextReviewAt on Card, status on Card, deckId on ReviewLog, reviewedAt on ReviewLog.
@@ -370,6 +478,7 @@ CARD ||--o{ REVIEWLOG : "records"
 - Next.js runtime configuration marks server-only externals for pdf-parse and canvas to prevent bundling in the browser.
 - Dependencies include Prisma, Supabase, pdfjs-dist, and OpenAI-compatible providers.
 - API routes depend on Prisma for persistence and optional AI services for content generation.
+- React components utilize memoization for performance optimization.
 
 ```mermaid
 graph LR
@@ -385,6 +494,10 @@ DB["db.ts"]
 PDF["pdf.ts"]
 SUPC["supabase/client.ts"]
 SUPS["supabase/server.ts"]
+SHM["StudyHeatmap.tsx"]
+AHM["ActivityHeatmap.tsx"]
+HP["page.tsx"]
+SP["stats/page.tsx"]
 NC --> APIU
 NC --> APIC
 Pkg --> DB
@@ -396,6 +509,10 @@ APIC --> DB
 APIR --> DB
 APID --> DB
 SUPC --> SUPS
+SHM --> Stats["stats.ts"]
+AHM --> Stats
+HP --> SHM
+SP --> AHM
 ```
 
 **Diagram sources**
@@ -410,6 +527,10 @@ SUPC --> SUPS
 - [src/lib/pdf.ts:1-130](file://src/lib/pdf.ts#L1-L130)
 - [src/utils/supabase/client.ts:1-11](file://src/utils/supabase/client.ts#L1-L11)
 - [src/utils/supabase/server.ts:1-29](file://src/utils/supabase/server.ts#L1-L29)
+- [src/components/shared/StudyHeatmap.tsx:1-136](file://src/components/shared/StudyHeatmap.tsx#L1-L136)
+- [src/components/stats/ActivityHeatmap.tsx:1-74](file://src/components/stats/ActivityHeatmap.tsx#L1-L74)
+- [src/app/page.tsx:105-112](file://src/app/page.tsx#L105-L112)
+- [src/app/stats/page.tsx:149](file://src/app/stats/page.tsx#L149)
 
 **Section sources**
 - [next.config.mjs:1-14](file://next.config.mjs#L1-L14)
@@ -423,6 +544,10 @@ SUPC --> SUPS
 - [src/lib/pdf.ts:1-130](file://src/lib/pdf.ts#L1-L130)
 - [src/utils/supabase/client.ts:1-11](file://src/utils/supabase/client.ts#L1-L11)
 - [src/utils/supabase/server.ts:1-29](file://src/utils/supabase/server.ts#L1-L29)
+- [src/components/shared/StudyHeatmap.tsx:1-136](file://src/components/shared/StudyHeatmap.tsx#L1-L136)
+- [src/components/stats/ActivityHeatmap.tsx:1-74](file://src/components/stats/ActivityHeatmap.tsx#L1-L74)
+- [src/app/page.tsx:105-112](file://src/app/page.tsx#L105-L112)
+- [src/app/stats/page.tsx:149](file://src/app/stats/page.tsx#L149)
 
 ## Performance Considerations
 
@@ -462,6 +587,40 @@ SUPC --> SUPS
 
 **Section sources**
 - [next.config.mjs:5-10](file://next.config.mjs#L5-L10)
+
+### React Component Optimization Strategies
+
+**Updated** Enhanced with concrete useMemo implementation example
+
+#### Strategic Memoization Patterns
+The StudyHeatmap component demonstrates several key memoization strategies:
+
+1. **Data Transformation Memoization**: Expensive operations like sorting and array transformations are memoized
+2. **Derived State Memoization**: Computed values that depend on props are cached
+3. **Stable References**: Memoized values maintain referential stability across renders
+
+#### Implementation Pattern
+```typescript
+// Cache expensive computation
+const expensiveValue = useMemo(() => {
+  // Heavy computation
+  return complexCalculation(data);
+}, [dependencies]);
+
+// Prevent unnecessary re-renders
+const stableValue = useMemo(() => {
+  // Computed value based on props
+  return deriveValue(props);
+}, [props]);
+```
+
+#### Performance Benefits
+- **Reduced computational overhead**: Expensive operations run only when dependencies change
+- **Stable component references**: Prevents unnecessary re-renders of child components
+- **Improved rendering performance**: Optimized DOM calculations and virtual DOM updates
+
+**Section sources**
+- [src/components/shared/StudyHeatmap.tsx:24-60](file://src/components/shared/StudyHeatmap.tsx#L24-L60)
 
 ### Image Optimization Techniques
 - Use next/image with appropriate widths and aspect ratios.
@@ -519,16 +678,19 @@ SUPC --> SUPS
 - AI service errors: handle rate limits, model availability, and invalid API keys gracefully; surface user-friendly messages.
 - PDF parsing issues: ensure sufficient text content; validate file types and sizes; adjust chunk sizes for performance.
 - Streaming problems: confirm X-Accel-Buffering is disabled for immediate delivery; validate TransformStream writer lifecycle.
+- React performance issues: verify useMemo dependencies are correctly specified; ensure memoized values are stable across renders.
 
 **Section sources**
 - [src/lib/db.ts:8-47](file://src/lib/db.ts#L8-L47)
 - [src/app/api/upload/route.ts:86-106](file://src/app/api/upload/route.ts#L86-L106)
 - [src/app/api/upload/route.ts:179-189](file://src/app/api/upload/route.ts#L179-L189)
 - [src/app/api/upload/route.ts:288-296](file://src/app/api/upload/route.ts#L288-L296)
+- [src/components/shared/StudyHeatmap.tsx:24-60](file://src/components/shared/StudyHeatmap.tsx#L24-L60)
 
 ## Conclusion
-Recall’s performance hinges on efficient database access patterns, strategic indexing, streaming APIs, and mindful resource usage. By applying the recommendations—selective projections, transactions, indexes, concurrency, and observability—you can achieve responsive UIs, scalable backend operations, and robust production deployments.
+Recall's performance hinges on efficient database access patterns, strategic indexing, streaming APIs, and mindful resource usage. The addition of React useMemo optimization in components like StudyHeatmap demonstrates practical approaches to component-level performance enhancement. By applying the recommendations—selective projections, transactions, indexes, concurrency, memoization strategies, and observability—you can achieve responsive UIs, scalable backend operations, and robust production deployments.
 
 ## Appendices
 - Recommended Postgres indexes for improved query performance.
 - Deployment checklist for production hardening and monitoring.
+- React component optimization patterns and best practices.

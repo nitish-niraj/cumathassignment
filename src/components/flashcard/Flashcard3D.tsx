@@ -59,6 +59,7 @@ export default function Flashcard3D({
 
       {/* 3-D rotating card */}
       <motion.div
+        initial={false}
         animate={{ rotateY: flipped ? 180 : 0 }}
         transition={{ duration: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
         style={{

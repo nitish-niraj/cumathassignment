@@ -1,7 +1,6 @@
 "use client";
 
-import { animate, useMotionValue, useMotionValueEvent } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type MasteryRingProps = {
   percentage: number;
@@ -13,21 +12,27 @@ const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export default function MasteryRing({ percentage }: MasteryRingProps) {
-  const value = useMotionValue(0);
   const [display, setDisplay] = useState(0);
-
-  useMotionValueEvent(value, "change", (latest) => {
-    setDisplay(Math.round(latest));
-  });
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const controls = animate(value, percentage, {
-      duration: 1,
-      ease: [0.25, 0.1, 0.25, 1],
-    });
+    let start: number | null = null;
 
-    return () => controls.stop();
-  }, [percentage, value]);
+    const step = (timestamp: number) => {
+      if (start === null) start = timestamp;
+      const progress = Math.min((timestamp - start) / 1000, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(percentage * eased));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [percentage]);
 
   const offset = CIRCUMFERENCE - (display / 100) * CIRCUMFERENCE;
 

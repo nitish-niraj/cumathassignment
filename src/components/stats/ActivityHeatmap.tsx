@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { format, subDays } from "date-fns";
 
 type ActivityHeatmapProps = {
@@ -50,16 +49,13 @@ export default function ActivityHeatmap({ countsByDate }: ActivityHeatmapProps) 
       <div className="flex gap-1">
         {columns.map((column, colIndex) => (
           <div key={`col-${colIndex}`} className="flex flex-col gap-1">
-            {column.map((date, rowIndex) => {
+            {column.map((date) => {
               const key = format(date, "yyyy-MM-dd");
               const value = countsByDate[key] ?? 0;
 
               return (
-                <motion.div
+                <div
                   key={key}
-                  initial={false}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: colIndex * 0.03 + rowIndex * 0.01 }}
                   title={`${format(date, "MMM d, yyyy")} - ${value} review${value === 1 ? "" : "s"}`}
                   className={`h-3.5 w-3.5 rounded-sm ${getIntensityClass(value)}`}
                 />

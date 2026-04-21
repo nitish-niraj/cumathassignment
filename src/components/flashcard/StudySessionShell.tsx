@@ -283,6 +283,7 @@ export default function StudySessionShell({
       <div className="fixed left-0 top-0 z-50 h-[3px] w-full bg-zinc-900">
         <motion.div
           className="h-full bg-violet-500"
+          initial={false}
           animate={{ width: `${progress}%` }}
           transition={{ type: "spring", stiffness: 180, damping: 28 }}
         />

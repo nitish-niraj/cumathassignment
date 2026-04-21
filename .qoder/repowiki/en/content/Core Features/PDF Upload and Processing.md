@@ -13,14 +13,16 @@
 - [schema.prisma](file://prisma/schema.prisma)
 - [package.json](file://package.json)
 - [README.md](file://README.md)
+- [next.config.mjs](file://next.config.mjs)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Enhanced PDF.js worker compatibility for Vercel serverless environments
-- Improved PDF processing reliability with server-side detection logic and fallback mechanisms
-- Added explicit worker thread disabling for Node.js/serverless environments
-- Updated PDF parsing configuration for optimal serverless performance
+- Enhanced PDF.js worker configuration for Vercel serverless environments with defensive error handling and fallback mechanisms
+- Added comprehensive workerSrc and workerPort configuration improvements to address 'Invalid URL' and 'fake worker' errors
+- Implemented automatic worker thread disabling for Node.js/serverless environments
+- Added maximally constrained fallback configuration for PDF processing failures
+- Updated Next.js configuration to externalize pdfjs-dist for serverless compatibility
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -37,7 +39,7 @@
 ## Introduction
 This document explains the complete PDF upload and processing pipeline that transforms a PDF into structured flashcards. It covers the frontend upload flow, multipart form handling, file validation, streaming response implementation, PDF parsing and text extraction, content chunking, AI-driven flashcard generation, rate limiting, error handling, and progress reporting. Practical examples and configuration options are included, along with troubleshooting guidance for common issues such as unsupported file types or large files.
 
-**Updated** Enhanced with improved PDF.js worker compatibility for Vercel serverless environments, ensuring reliable PDF processing in cloud function deployments.
+**Updated** Enhanced with improved PDF.js worker compatibility for Vercel serverless environments, featuring automatic worker thread disabling, defensive error handling, and fallback mechanisms to prevent 'Invalid URL' and 'fake worker' errors during PDF processing.
 
 ## Project Structure
 The PDF upload pipeline spans frontend and backend components:
@@ -62,6 +64,8 @@ end
 subgraph "External"
 OR["OpenRouter API"]
 PG["PostgreSQL via Prisma"]
+PDFJS["pdfjs-dist Library"]
+NEXT["Next.js Config"]
 end
 UI --> DZ
 UI --> PU
@@ -71,6 +75,8 @@ API --> AI
 API --> DB
 AI --> OR
 DB --> PG
+PDF --> PDFJS
+PDF --> NEXT
 ```
 
 **Diagram sources**
@@ -81,6 +87,7 @@ DB --> PG
 - [pdf.ts:13-112](file://src/lib/pdf.ts#L13-L112)
 - [ai.ts:8-233](file://src/lib/ai.ts#L8-L233)
 - [db.ts:51-68](file://src/lib/db.ts#L51-L68)
+- [next.config.mjs:1-9](file://next.config.mjs#L1-L9)
 
 **Section sources**
 - [README.md:9-16](file://README.md#L9-L16)
@@ -88,13 +95,13 @@ DB --> PG
 
 ## Core Components
 - Upload API route: Parses multipart form data, validates inputs, streams progress, orchestrates PDF parsing, chunking, AI generation, deduplication, and persistence.
-- PDF library: Parses PDF buffers, cleans extracted text, removes page numbers and artifacts, and chunks content for AI processing with enhanced serverless compatibility.
+- PDF library: Parses PDF buffers with enhanced serverless compatibility, featuring automatic worker thread disabling and fallback error handling for Vercel deployments.
 - AI library: Generates flashcards from text chunks using OpenRouter, with fallback models, retry logic, and progress callbacks.
 - Database client: Provides a Prisma client configured for production-grade pooling and SSL requirements.
 - Frontend upload page: Manages file selection, form submission, streaming response parsing, and progress UI updates.
 - UI components: DropZone and ProcessingUI provide user feedback during upload and processing.
 
-**Updated** Enhanced PDF processing reliability with server-side detection logic and worker thread fallback mechanisms.
+**Updated** Enhanced PDF processing reliability with automatic worker thread management and comprehensive error recovery mechanisms for serverless environments.
 
 **Section sources**
 - [route.ts:86-298](file://src/app/api/upload/route.ts#L86-L298)
@@ -127,6 +134,8 @@ Client->>UI : "Submit PDF + metadata"
 UI->>API : "POST /api/upload (multipart/form-data)"
 API->>API : "Validate file type/size/title"
 API->>PDF : "parsePDF(buffer) with serverless worker config"
+PDF->>PDF : "Disable web workers for serverless"
+PDF->>PDF : "Fallback to main thread on 'Invalid URL'"
 PDF-->>API : "{text, pageCount}"
 API->>API : "chunkText(text)"
 API->>AI : "generateFlashcardsFromPDF(chunks, title, subject, onProgress)"
@@ -175,8 +184,9 @@ Key behaviors:
 ### PDF Parsing and Text Cleaning
 Responsibilities:
 - Loads pdf-parse lazily to reduce cold start overhead.
-- Provides server-side worker detection and fallback logic for Vercel serverless environments.
+- Provides automatic server-side worker detection and fallback logic for Vercel serverless environments.
 - Disables web workers in Node.js environments to prevent file path resolution issues.
+- Implements defensive error handling with fallback mechanisms for 'Invalid URL' and 'fake worker' errors.
 - Parses PDF buffer to text and metadata with optimized serverless configuration.
 - Cleans text:
   - Removes page number patterns.
@@ -184,7 +194,7 @@ Responsibilities:
   - Trims lines and final text.
 - Exposes a chunkText function that splits text into overlapping segments suitable for AI processing.
 
-**Updated** Enhanced with explicit server-side detection logic that disables web workers for Node.js/serverless environments, preventing worker thread initialization failures in Vercel's bundled function output.
+**Updated** Enhanced with comprehensive worker thread management including automatic workerSrc and workerPort configuration, defensive per-call worker disabling, and maximally constrained fallback configuration to resolve serverless deployment issues.
 
 Chunking strategy:
 - Splits by paragraph boundaries.
@@ -317,8 +327,9 @@ CARD ||--o{ REVIEW_LOG : "logs"
 - Runtime and timeout: Node runtime with a 5-minute maxDuration to handle large PDFs and AI latency.
 - External libraries: pdf-parse for PDF parsing, OpenAI client for OpenRouter, Prisma for database access.
 - Environment dependencies: DATABASE_URL and OPENROUTER_API_KEY are mandatory for operation.
+- Serverless optimization: Next.js configuration externalizes pdfjs-dist to prevent bundling issues in serverless environments.
 
-**Updated** Enhanced PDF.js worker compatibility for Vercel serverless environments with explicit worker thread configuration.
+**Updated** Enhanced PDF.js worker compatibility for Vercel serverless environments with automatic worker thread configuration and Next.js external package optimization.
 
 ```mermaid
 graph LR
@@ -328,8 +339,8 @@ API --> DB["Database Client<br/>db.ts"]
 AI --> OR["OpenRouter API"]
 DB --> PG["PostgreSQL"]
 PDF --> PP["pdfjs-dist"]
-AI --> OA["OpenAI Client"]
-DB --> PR["Prisma Client"]
+NEXT["Next.js Config"]
+PDF --> NEXT
 ```
 
 **Diagram sources**
@@ -340,6 +351,7 @@ DB --> PR["Prisma Client"]
 - [package.json:33-34](file://package.json#L33-L34)
 - [package.json:32](file://package.json#L32)
 - [package.json:19](file://package.json#L19)
+- [next.config.mjs:1-9](file://next.config.mjs#L1-L9)
 
 **Section sources**
 - [route.ts:7-9](file://src/app/api/upload/route.ts#L7-L9)
@@ -352,9 +364,10 @@ DB --> PR["Prisma Client"]
 - Rate limiting: Prevents overload on free-tier AI services and ensures fair usage.
 - Memory management: Processing occurs in-memory for buffers and chunks; large PDFs may increase memory usage. Consider optimizing chunk sizes or adding streaming-to-disk strategies if needed.
 - Database pooling: Production-aware Prisma configuration ensures efficient connection reuse.
-- Serverless optimization: Explicit worker thread disabling prevents unnecessary resource allocation in serverless environments.
+- Serverless optimization: Automatic worker thread disabling prevents unnecessary resource allocation in serverless environments.
+- PDF.js worker management: Defensive per-call worker configuration eliminates persistent worker thread overhead in serverless deployments.
 
-**Updated** Enhanced serverless performance with worker thread optimization and reduced resource overhead in Vercel environments.
+**Updated** Enhanced serverless performance with comprehensive worker thread optimization, automatic fallback mechanisms, and Next.js external package configuration for optimal Vercel deployment.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -430,21 +443,29 @@ Common issues and resolutions:
 - PDF processing failures in serverless environments:
   - Symptom: Worker thread initialization errors or PDF parsing failures.
   - Cause: Web worker conflicts in Vercel serverless functions.
-  - Resolution: The system automatically disables workers for serverless environments.
+  - Resolution: The system automatically disables workers for serverless environments and uses fallback configurations.
   - Section sources
-    - [pdf.ts:3-10](file://src/lib/pdf.ts#L3-L10)
+    - [pdf.ts:3-14](file://src/lib/pdf.ts#L3-L14)
 
 - Serverless worker compatibility issues:
   - Symptom: PDF processing hangs or fails in Vercel deployments.
   - Cause: Worker thread file path resolution issues in bundled functions.
-  - Resolution: Automatic server-side detection and worker fallback to main thread.
+  - Resolution: Automatic server-side detection and worker fallback to main thread with maximally constrained configuration.
   - Section sources
-    - [pdf.ts:8-10](file://src/lib/pdf.ts#L8-L10)
+    - [pdf.ts:8-14](file://src/lib/pdf.ts#L8-L14)
+    - [pdf.ts:48-65](file://src/lib/pdf.ts#L48-L65)
+
+- Invalid URL or fake worker errors:
+  - Symptom: PDF parsing fails with 'Invalid URL' or 'fake worker' messages.
+  - Cause: PDF.js worker URL validation failing in serverless environments.
+  - Resolution: System automatically applies fallback configuration with useWorkerFetch=false and disableFontFace=true.
+  - Section sources
+    - [pdf.ts:48-65](file://src/lib/pdf.ts#L48-L65)
 
 ## Conclusion
-The PDF upload and processing pipeline integrates robust validation, streaming progress reporting, intelligent PDF parsing with enhanced serverless compatibility, and AI-powered flashcard generation. It balances performance with reliability through lazy loading, chunking, rate limiting, fallback mechanisms, and explicit worker thread configuration for Vercel serverless environments. Proper configuration of environment variables and adherence to file constraints ensure smooth operation across different deployment targets.
+The PDF upload and processing pipeline integrates robust validation, streaming progress reporting, intelligent PDF parsing with enhanced serverless compatibility, and AI-powered flashcard generation. It balances performance with reliability through lazy loading, chunking, rate limiting, fallback mechanisms, and comprehensive worker thread configuration for Vercel serverless environments. The enhanced PDF.js worker configuration includes automatic worker disabling, defensive per-call configuration, and fallback error handling to resolve 'Invalid URL' and 'fake worker' errors. Proper configuration of environment variables and adherence to file constraints ensure smooth operation across different deployment targets.
 
-**Updated** Enhanced with improved serverless compatibility and worker thread fallback mechanisms for reliable PDF processing in Vercel and other serverless platforms.
+**Updated** Enhanced with comprehensive serverless compatibility including automatic worker thread management, defensive error handling, and Next.js external package optimization for reliable PDF processing in Vercel and other serverless platforms.
 
 ## Appendices
 
@@ -460,9 +481,11 @@ The PDF upload and processing pipeline integrates robust validation, streaming p
   - Rate limit: 5 requests per 60 seconds per IP.
 - Serverless compatibility:
   - Automatic worker thread disabling for Node.js environments.
-  - Optimized PDF processing configuration for serverless functions.
+  - Per-call workerSrc and workerPort configuration for defensive error handling.
+  - Maximally constrained fallback configuration for 'Invalid URL' and 'fake worker' errors.
+  - Next.js external package configuration for pdfjs-dist optimization.
 
-**Updated** Added serverless compatibility configuration options.
+**Updated** Added comprehensive serverless compatibility configuration options including worker thread management and fallback mechanisms.
 
 **Section sources**
 - [route.ts:8-9](file://src/app/api/upload/route.ts#L8-L9)
@@ -471,7 +494,8 @@ The PDF upload and processing pipeline integrates robust validation, streaming p
 - [DropZone.tsx:68](file://src/components/upload/DropZone.tsx#L68)
 - [db.ts:8-39](file://src/lib/db.ts#L8-L39)
 - [ai.ts:11-16](file://src/lib/ai.ts#L11-L16)
-- [pdf.ts:3-10](file://src/lib/pdf.ts#L3-L10)
+- [pdf.ts:3-14](file://src/lib/pdf.ts#L3-L14)
+- [next.config.mjs:1-9](file://next.config.mjs#L1-L9)
 
 ### Practical Examples
 - Uploading a PDF:
@@ -484,12 +508,14 @@ The PDF upload and processing pipeline integrates robust validation, streaming p
   - Navigation options lead to studying or viewing the deck.
 - Serverless deployment:
   - Works seamlessly on Vercel without worker thread conflicts.
-  - Automatic PDF processing optimization for serverless environments.
+  - Automatic PDF processing optimization for serverless environments with fallback error handling.
+  - Comprehensive worker thread management prevents 'Invalid URL' and 'fake worker' errors.
 
-**Updated** Added serverless deployment considerations and automatic optimization.
+**Updated** Added serverless deployment considerations with automatic worker thread management and comprehensive error recovery mechanisms.
 
 **Section sources**
 - [page.tsx:227-348](file://src/app/upload/page.tsx#L227-L348)
 - [DropZone.tsx:21-36](file://src/components/upload/DropZone.tsx#L21-L36)
 - [ProcessingUI.tsx:12-25](file://src/components/upload/ProcessingUI.tsx#L12-L25)
-- [pdf.ts:8-10](file://src/lib/pdf.ts#L8-L10)
+- [pdf.ts:8-14](file://src/lib/pdf.ts#L8-L14)
+- [pdf.ts:48-65](file://src/lib/pdf.ts#L48-L65)

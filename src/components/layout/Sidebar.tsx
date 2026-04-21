@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import { BarChart3, LayoutDashboard, Layers, Upload } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -68,11 +67,7 @@ export default function Sidebar() {
               )}
             >
               {isActive ? (
-                <motion.div
-                  layoutId="nav-indicator"
-                  className="absolute inset-0 -z-10 rounded-xl bg-zinc-800/80"
-                  transition={{ type: "spring", stiffness: 500, damping: 36 }}
-                />
+                <div className="absolute inset-0 -z-10 rounded-xl bg-zinc-800/80" />
               ) : null}
               <Icon className="h-5 w-5 lg:h-4 lg:w-4" />
               <span className="hidden text-xs lg:inline lg:text-sm">{item.label}</span>
@@ -83,13 +78,13 @@ export default function Sidebar() {
 
       <div className="hidden mt-auto rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 backdrop-blur-xl lg:block">
         <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Due Today</p>
-        <motion.p
-          className="mt-2 text-3xl font-semibold tracking-tight text-zinc-100"
-          animate={dueCount > 0 ? { opacity: [1, 0.85, 1] } : { opacity: 1 }}
-          transition={dueCount > 0 ? { duration: 1.6, repeat: Number.POSITIVE_INFINITY } : { duration: 0 }}
+        <p
+          className={`mt-2 text-3xl font-semibold tracking-tight text-zinc-100 ${
+            dueCount > 0 ? "animate-pulse" : ""
+          }`}
         >
           {dueCount}
-        </motion.p>
+        </p>
         <p className="mt-1 text-xs text-zinc-500">cards waiting for review</p>
       </div>
     </aside>

@@ -15,6 +15,13 @@
 - [utils.ts](file://src/lib/utils.ts)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated Performance Considerations section to include specific React.memo and useMemo usage patterns
+- Enhanced StudyHeatmap optimization details with useMemo implementation specifics
+- Refined ActivityHeatmap animation optimization details
+- Added detailed memoization patterns and performance optimization strategies
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -84,25 +91,25 @@ UT --> P
 ```
 
 **Diagram sources**
-- [page.tsx:14-186](file://src/app/stats/page.tsx#L14-L186)
+- [page.tsx:14-187](file://src/app/stats/page.tsx#L14-L187)
 - [ActivityHeatmap.tsx:22-74](file://src/components/stats/ActivityHeatmap.tsx#L22-L74)
 - [MasteryRing.tsx:15-63](file://src/components/stats/MasteryRing.tsx#L15-L63)
-- [StudyHeatmap.tsx:15-138](file://src/components/shared/StudyHeatmap.tsx#L15-L138)
+- [StudyHeatmap.tsx:15-136](file://src/components/shared/StudyHeatmap.tsx#L15-L136)
 - [stats.ts:51-222](file://src/lib/stats.ts#L51-L222)
 - [route.ts:7-14](file://src/app/api/stats/due-count/route.ts#L7-L14)
 - [CountUp.tsx:12-31](file://src/components/shared/CountUp.tsx#L12-L31)
-- [loading.tsx:3-35](file://src/app/stats/loading.tsx#L3-L35)
+- [loading.tsx:3-36](file://src/app/stats/loading.tsx#L3-L36)
 - [globals.css:60-82](file://src/styles/globals.css#L60-L82)
 
 **Section sources**
-- [page.tsx:14-186](file://src/app/stats/page.tsx#L14-L186)
+- [page.tsx:14-187](file://src/app/stats/page.tsx#L14-L187)
 - [ActivityHeatmap.tsx:22-74](file://src/components/stats/ActivityHeatmap.tsx#L22-L74)
 - [MasteryRing.tsx:15-63](file://src/components/stats/MasteryRing.tsx#L15-L63)
-- [StudyHeatmap.tsx:15-138](file://src/components/shared/StudyHeatmap.tsx#L15-L138)
+- [StudyHeatmap.tsx:15-136](file://src/components/shared/StudyHeatmap.tsx#L15-L136)
 - [stats.ts:51-222](file://src/lib/stats.ts#L51-L222)
 - [route.ts:7-14](file://src/app/api/stats/due-count/route.ts#L7-L14)
 - [CountUp.tsx:12-31](file://src/components/shared/CountUp.tsx#L12-L31)
-- [loading.tsx:3-35](file://src/app/stats/loading.tsx#L3-L35)
+- [loading.tsx:3-36](file://src/app/stats/loading.tsx#L3-L36)
 - [globals.css:60-82](file://src/styles/globals.css#L60-L82)
 
 ## Core Components
@@ -136,10 +143,10 @@ This section summarizes the primary analytics components and their responsibilit
 - [MasteryRing.tsx:6-14](file://src/components/stats/MasteryRing.tsx#L6-L14)
 - [MasteryRing.tsx:15-63](file://src/components/stats/MasteryRing.tsx#L15-L63)
 - [StudyHeatmap.tsx:6-13](file://src/components/shared/StudyHeatmap.tsx#L6-L13)
-- [StudyHeatmap.tsx:15-138](file://src/components/shared/StudyHeatmap.tsx#L15-L138)
+- [StudyHeatmap.tsx:15-136](file://src/components/shared/StudyHeatmap.tsx#L15-L136)
 - [CountUp.tsx:6-10](file://src/components/shared/CountUp.tsx#L6-L10)
 - [CountUp.tsx:12-31](file://src/components/shared/CountUp.tsx#L12-L31)
-- [loading.tsx:3-35](file://src/app/stats/loading.tsx#L3-L35)
+- [loading.tsx:3-36](file://src/app/stats/loading.tsx#L3-L36)
 - [globals.css:60-82](file://src/styles/globals.css#L60-L82)
 
 ## Architecture Overview
@@ -178,7 +185,7 @@ SH-->>U : "Weekly study pattern"
 - [stats.ts:51-222](file://src/lib/stats.ts#L51-L222)
 - [ActivityHeatmap.tsx:22-74](file://src/components/stats/ActivityHeatmap.tsx#L22-L74)
 - [MasteryRing.tsx:15-63](file://src/components/stats/MasteryRing.tsx#L15-L63)
-- [StudyHeatmap.tsx:15-138](file://src/components/shared/StudyHeatmap.tsx#L15-L138)
+- [StudyHeatmap.tsx:15-136](file://src/components/shared/StudyHeatmap.tsx#L15-L136)
 
 ## Detailed Component Analysis
 
@@ -283,11 +290,11 @@ Legend --> End(["Complete"])
 ```
 
 **Diagram sources**
-- [StudyHeatmap.tsx:15-138](file://src/components/shared/StudyHeatmap.tsx#L15-L138)
+- [StudyHeatmap.tsx:15-136](file://src/components/shared/StudyHeatmap.tsx#L15-L136)
 
 **Section sources**
 - [StudyHeatmap.tsx:6-13](file://src/components/shared/StudyHeatmap.tsx#L6-L13)
-- [StudyHeatmap.tsx:15-138](file://src/components/shared/StudyHeatmap.tsx#L15-L138)
+- [StudyHeatmap.tsx:15-136](file://src/components/shared/StudyHeatmap.tsx#L15-L136)
 
 ### Data Formatting and Calculation Utilities
 - Streak calculation:
@@ -355,7 +362,7 @@ MR-->>P : "Render animated ring"
 
 **Section sources**
 - [page.tsx:14-96](file://src/app/stats/page.tsx#L14-L96)
-- [loading.tsx:3-35](file://src/app/stats/loading.tsx#L3-L35)
+- [loading.tsx:3-36](file://src/app/stats/loading.tsx#L3-L36)
 
 ### API Integration and Real-Time Updates
 - Due count API:
@@ -432,19 +439,32 @@ API["route.ts"] --> ST
 - [route.ts:7-14](file://src/app/api/stats/due-count/route.ts#L7-L14)
 
 ## Performance Considerations
-- Memoization:
-  - StudyHeatmap uses useMemo to sort and chunk data, preventing unnecessary recomputations.
-- Animation costs:
+**Updated** Enhanced with specific React.memo and useMemo usage patterns for optimization.
+
+- Memoization Strategies:
+  - **StudyHeatmap useMemo Optimization**: The component implements strategic memoization patterns:
+    - `sortedData`: Uses `useMemo` to sort incoming data chronologically, preventing unnecessary recomputations when data prop remains stable
+    - `columns`: Memoizes the transformation of flat arrays into weekly column structures, avoiding repeated chunking operations
+    - `monthLabels`: Computes and caches month label positions, eliminating redundant date formatting and positioning calculations
+  - **ActivityHeatmap Animation Optimization**: Implements staggered animation delays (`colIndex * 0.03 + rowIndex * 0.01`) to balance visual appeal with performance
+  - **Component-Level Memoization**: Consider wrapping components with `React.memo` for stable props to prevent unnecessary re-renders
+
+- Animation Costs:
   - ActivityHeatmap applies staggered animations; keep the number of animated elements reasonable.
   - MasteryRing animates percentage changes; consider throttling updates if data updates frequently.
-- Rendering scope:
+
+- Rendering Scope:
   - ActivityHeatmap and StudyHeatmap use horizontal scrolling containers to avoid layout thrashing.
-- Data volume:
+
+- Data Volume:
   - 90-day and 84-day grids are small enough to render efficiently; avoid rendering larger ranges without pagination or virtualization.
-- Loading states:
+
+- Loading States:
   - Skeleton-based loading improves perceived performance during data fetches.
 
-[No sources needed since this section provides general guidance]
+**Section sources**
+- [StudyHeatmap.tsx:24-60](file://src/components/shared/StudyHeatmap.tsx#L24-L60)
+- [ActivityHeatmap.tsx:58-62](file://src/components/stats/ActivityHeatmap.tsx#L58-L62)
 
 ## Troubleshooting Guide
 - Empty or missing data:
@@ -470,8 +490,6 @@ The analytics components provide a cohesive suite of visualizations for learning
 - MasteryRing delivers a smooth, animated mastery indicator suitable for summary cards.
 - StudyHeatmap presents long-term study patterns with month labels, legends, and interactive tooltips.
 Data is computed centrally and passed to components, with a simple API for due counts. Theming and responsive design ensure a consistent, accessible experience across devices.
-
-[No sources needed since this section summarizes without analyzing specific files]
 
 ## Appendices
 
@@ -500,5 +518,3 @@ Data is computed centrally and passed to components, with a simple API for due c
   - Maintain sufficient contrast for text and tooltips against dark backgrounds.
 - Screen reader support:
   - Announce dynamic values (e.g., mastery percentage) with appropriate verbosity.
-
-[No sources needed since this section provides general guidance]
