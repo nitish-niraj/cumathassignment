@@ -1,0 +1,50 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Deck {
+  id            String      @id @default(cuid())
+  title         String
+  description   String?
+  subject       String?
+  emoji         String      @default("🧠")
+  cardCount     Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  lastStudiedAt DateTime?
+  cards         Card[]
+  reviewLogs    ReviewLog[]
+}
+
+model Card {
+  id              String      @id @default(cuid())
+  deckId          String
+  deck            Deck        @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  front           String
+  back            String
+  difficulty      String      @default("MEDIUM")
+  status          String      @default("NEW")
+  easeFactor      Float       @default(2.5)
+  interval        Int         @default(0)
+  repetitionCount Int         @default(0)
+  nextReviewAt    DateTime    @default(now())
+  lastReviewedAt  DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  reviewLogs      ReviewLog[]
+}
+
+model ReviewLog {
+  id         String   @id @default(cuid())
+  cardId     String
+  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  deckId     String
+  deck       Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  rating     String
+  reviewedAt DateTime @default(now())
+}

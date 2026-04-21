@@ -1,0 +1,97 @@
+// pdf-parse ships CommonJS only — use require() to avoid ESM default-export issues
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+
+export interface PDFResult {
+  text: string;
+  pageCount: number;
+  charCount: number;
+}
+
+/**
+ * Parse a PDF buffer and return cleaned text with metadata.
+ */
+export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
+  // Lazy load the parser heavily reducing cold start API bloat
+  const pdfParseReq = await import("pdf-parse");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdfParse = ((pdfParseReq as any).default || pdfParseReq) as any;
+  const data = await pdfParse(buffer);
+
+  let text = data.text;
+
+  // Remove page number patterns like "Page 1 of 10", "1 / 10", "- 1 -"
+  text = text.replace(/\bPage\s+\d+\s+of\s+\d+\b/gi, "");
+  text = text.replace(/\b\d+\s*\/\s*\d+\b/g, "");
+  text = text.replace(/^-\s*\d+\s*-$/gm, "");
+
+  // Remove lines that are just a number (lone page numbers)
+  text = text.replace(/^\s*\d+\s*$/gm, "");
+
+  // Collapse 3+ newlines into double newline
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  // Trim each line (removes trailing spaces / carriage returns)
+  text = text
+    .split("\n")
+    .map((l: string) => l.trimEnd())
+    .join("\n");
+
+  // Final trim
+  text = text.trim();
+
+  return {
+    text,
+    pageCount: data.numpages,
+    charCount: text.length,
+  };
+}
+
+/**
+ * Split text into overlapping chunks suitable for AI processing.
+ * Tries to split at paragraph boundaries (double newline).
+ */
+export function chunkText(text: string, maxChunkSize = 3000): string[] {
+  const OVERLAP = 300;
+  const MIN_CHUNK = 200;
+
+  const paragraphs = text.split(/\n\n+/);
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const para of paragraphs) {
+    const candidate = current ? current + "\n\n" + para : para;
+
+    if (candidate.length <= maxChunkSize) {
+      current = candidate;
+    } else {
+      // Current chunk is ready — flush it
+      if (current.length >= MIN_CHUNK) {
+        chunks.push(current.trim());
+      }
+
+      // Start new chunk with overlap from tail of previous chunk
+      if (current.length > OVERLAP) {
+        const tail = current.slice(-OVERLAP);
+        current = tail + "\n\n" + para;
+      } else {
+        current = para;
+      }
+
+      // If a single paragraph exceeds maxChunkSize, hard-split it
+      while (current.length > maxChunkSize) {
+        const slice = current.slice(0, maxChunkSize);
+        if (slice.length >= MIN_CHUNK) {
+          chunks.push(slice.trim());
+        }
+        current = current.slice(maxChunkSize - OVERLAP);
+      }
+    }
+  }
+
+  // Flush the last chunk
+  if (current.trim().length >= MIN_CHUNK) {
+    chunks.push(current.trim());
+  }
+
+  return chunks;
+}
