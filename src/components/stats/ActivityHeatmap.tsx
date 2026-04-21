@@ -57,7 +57,7 @@ export default function ActivityHeatmap({ countsByDate }: ActivityHeatmapProps) 
               return (
                 <motion.div
                   key={key}
-                  initial={{ opacity: 0, y: 4 }}
+                  initial={false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: colIndex * 0.03 + rowIndex * 0.01 }}
                   title={`${format(date, "MMM d, yyyy")} - ${value} review${value === 1 ? "" : "s"}`}

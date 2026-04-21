@@ -15,6 +15,13 @@
 - [README.md](file://README.md)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Enhanced PDF.js worker compatibility for Vercel serverless environments
+- Improved PDF processing reliability with server-side detection logic and fallback mechanisms
+- Added explicit worker thread disabling for Node.js/serverless environments
+- Updated PDF parsing configuration for optimal serverless performance
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -29,6 +36,8 @@
 
 ## Introduction
 This document explains the complete PDF upload and processing pipeline that transforms a PDF into structured flashcards. It covers the frontend upload flow, multipart form handling, file validation, streaming response implementation, PDF parsing and text extraction, content chunking, AI-driven flashcard generation, rate limiting, error handling, and progress reporting. Practical examples and configuration options are included, along with troubleshooting guidance for common issues such as unsupported file types or large files.
+
+**Updated** Enhanced with improved PDF.js worker compatibility for Vercel serverless environments, ensuring reliable PDF processing in cloud function deployments.
 
 ## Project Structure
 The PDF upload pipeline spans frontend and backend components:
@@ -79,11 +88,13 @@ DB --> PG
 
 ## Core Components
 - Upload API route: Parses multipart form data, validates inputs, streams progress, orchestrates PDF parsing, chunking, AI generation, deduplication, and persistence.
-- PDF library: Parses PDF buffers, cleans extracted text, removes page numbers and artifacts, and chunks content for AI processing.
+- PDF library: Parses PDF buffers, cleans extracted text, removes page numbers and artifacts, and chunks content for AI processing with enhanced serverless compatibility.
 - AI library: Generates flashcards from text chunks using OpenRouter, with fallback models, retry logic, and progress callbacks.
 - Database client: Provides a Prisma client configured for production-grade pooling and SSL requirements.
 - Frontend upload page: Manages file selection, form submission, streaming response parsing, and progress UI updates.
 - UI components: DropZone and ProcessingUI provide user feedback during upload and processing.
+
+**Updated** Enhanced PDF processing reliability with server-side detection logic and worker thread fallback mechanisms.
 
 **Section sources**
 - [route.ts:86-298](file://src/app/api/upload/route.ts#L86-L298)
@@ -99,7 +110,7 @@ The pipeline is a server-side streaming process that returns incremental progres
 - Environment checks for required secrets.
 - Rate limiting per IP.
 - Multipart form parsing and validation (type, size, title).
-- PDF parsing and text cleaning.
+- PDF parsing and text cleaning with serverless-compatible worker configuration.
 - Content chunking for AI processing.
 - Streaming AI generation with progress callbacks.
 - Deduplication and persistence to the database.
@@ -115,7 +126,7 @@ participant DB as "Database<br/>db.ts"
 Client->>UI : "Submit PDF + metadata"
 UI->>API : "POST /api/upload (multipart/form-data)"
 API->>API : "Validate file type/size/title"
-API->>PDF : "parsePDF(buffer)"
+API->>PDF : "parsePDF(buffer) with serverless worker config"
 PDF-->>API : "{text, pageCount}"
 API->>API : "chunkText(text)"
 API->>AI : "generateFlashcardsFromPDF(chunks, title, subject, onProgress)"
@@ -141,7 +152,7 @@ Responsibilities:
   - File presence and type enforcement to PDF.
   - Size limit of 20 MB.
   - Title requirement.
-- PDF parsing and text extraction.
+- PDF parsing and text extraction with serverless-compatible configuration.
 - Content chunking for AI processing.
 - Streaming progress updates to the client.
 - AI generation with retry and fallback models.
@@ -164,13 +175,16 @@ Key behaviors:
 ### PDF Parsing and Text Cleaning
 Responsibilities:
 - Loads pdf-parse lazily to reduce cold start overhead.
-- Provides a DOMMatrix polyfill for Node environments to support pdf-parse.
-- Parses PDF buffer to text and metadata.
+- Provides server-side worker detection and fallback logic for Vercel serverless environments.
+- Disables web workers in Node.js environments to prevent file path resolution issues.
+- Parses PDF buffer to text and metadata with optimized serverless configuration.
 - Cleans text:
   - Removes page number patterns.
   - Collapses excessive newlines.
   - Trims lines and final text.
 - Exposes a chunkText function that splits text into overlapping segments suitable for AI processing.
+
+**Updated** Enhanced with explicit server-side detection logic that disables web workers for Node.js/serverless environments, preventing worker thread initialization failures in Vercel's bundled function output.
 
 Chunking strategy:
 - Splits by paragraph boundaries.
@@ -304,6 +318,8 @@ CARD ||--o{ REVIEW_LOG : "logs"
 - External libraries: pdf-parse for PDF parsing, OpenAI client for OpenRouter, Prisma for database access.
 - Environment dependencies: DATABASE_URL and OPENROUTER_API_KEY are mandatory for operation.
 
+**Updated** Enhanced PDF.js worker compatibility for Vercel serverless environments with explicit worker thread configuration.
+
 ```mermaid
 graph LR
 API["Upload Route<br/>route.ts"] --> PDF["PDF Parser<br/>pdf.ts"]
@@ -311,7 +327,7 @@ API --> AI["AI Generator<br/>ai.ts"]
 API --> DB["Database Client<br/>db.ts"]
 AI --> OR["OpenRouter API"]
 DB --> PG["PostgreSQL"]
-PDF --> PP["pdf-parse"]
+PDF --> PP["pdfjs-dist"]
 AI --> OA["OpenAI Client"]
 DB --> PR["Prisma Client"]
 ```
@@ -336,8 +352,9 @@ DB --> PR["Prisma Client"]
 - Rate limiting: Prevents overload on free-tier AI services and ensures fair usage.
 - Memory management: Processing occurs in-memory for buffers and chunks; large PDFs may increase memory usage. Consider optimizing chunk sizes or adding streaming-to-disk strategies if needed.
 - Database pooling: Production-aware Prisma configuration ensures efficient connection reuse.
+- Serverless optimization: Explicit worker thread disabling prevents unnecessary resource allocation in serverless environments.
 
-[No sources needed since this section provides general guidance]
+**Updated** Enhanced serverless performance with worker thread optimization and reduced resource overhead in Vercel environments.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -410,10 +427,24 @@ Common issues and resolutions:
   - Section sources
     - [route.ts:288-296](file://src/app/api/upload/route.ts#L288-L296)
 
-## Conclusion
-The PDF upload and processing pipeline integrates robust validation, streaming progress reporting, intelligent PDF parsing, and AI-powered flashcard generation. It balances performance with reliability through lazy loading, chunking, rate limiting, and fallback mechanisms. Proper configuration of environment variables and adherence to file constraints ensure smooth operation.
+- PDF processing failures in serverless environments:
+  - Symptom: Worker thread initialization errors or PDF parsing failures.
+  - Cause: Web worker conflicts in Vercel serverless functions.
+  - Resolution: The system automatically disables workers for serverless environments.
+  - Section sources
+    - [pdf.ts:3-10](file://src/lib/pdf.ts#L3-L10)
 
-[No sources needed since this section summarizes without analyzing specific files]
+- Serverless worker compatibility issues:
+  - Symptom: PDF processing hangs or fails in Vercel deployments.
+  - Cause: Worker thread file path resolution issues in bundled functions.
+  - Resolution: Automatic server-side detection and worker fallback to main thread.
+  - Section sources
+    - [pdf.ts:8-10](file://src/lib/pdf.ts#L8-L10)
+
+## Conclusion
+The PDF upload and processing pipeline integrates robust validation, streaming progress reporting, intelligent PDF parsing with enhanced serverless compatibility, and AI-powered flashcard generation. It balances performance with reliability through lazy loading, chunking, rate limiting, fallback mechanisms, and explicit worker thread configuration for Vercel serverless environments. Proper configuration of environment variables and adherence to file constraints ensure smooth operation across different deployment targets.
+
+**Updated** Enhanced with improved serverless compatibility and worker thread fallback mechanisms for reliable PDF processing in Vercel and other serverless platforms.
 
 ## Appendices
 
@@ -427,6 +458,11 @@ The PDF upload and processing pipeline integrates robust validation, streaming p
 - Backend limits:
   - Max duration: 300 seconds.
   - Rate limit: 5 requests per 60 seconds per IP.
+- Serverless compatibility:
+  - Automatic worker thread disabling for Node.js environments.
+  - Optimized PDF processing configuration for serverless functions.
+
+**Updated** Added serverless compatibility configuration options.
 
 **Section sources**
 - [route.ts:8-9](file://src/app/api/upload/route.ts#L8-L9)
@@ -435,18 +471,25 @@ The PDF upload and processing pipeline integrates robust validation, streaming p
 - [DropZone.tsx:68](file://src/components/upload/DropZone.tsx#L68)
 - [db.ts:8-39](file://src/lib/db.ts#L8-L39)
 - [ai.ts:11-16](file://src/lib/ai.ts#L11-L16)
+- [pdf.ts:3-10](file://src/lib/pdf.ts#L3-L10)
 
 ### Practical Examples
 - Uploading a PDF:
   - Use the DropZone to select a PDF or drag-and-drop.
   - Enter a deck title and optional subject.
-  - Click “Generate Flashcards” to submit the form.
+  - Click "Generate Flashcards" to submit the form.
   - Observe progress updates and completion.
 - Expected outcomes:
   - A new deck is created with flashcards derived from the PDF.
   - Navigation options lead to studying or viewing the deck.
+- Serverless deployment:
+  - Works seamlessly on Vercel without worker thread conflicts.
+  - Automatic PDF processing optimization for serverless environments.
+
+**Updated** Added serverless deployment considerations and automatic optimization.
 
 **Section sources**
 - [page.tsx:227-348](file://src/app/upload/page.tsx#L227-L348)
 - [DropZone.tsx:21-36](file://src/components/upload/DropZone.tsx#L21-L36)
 - [ProcessingUI.tsx:12-25](file://src/components/upload/ProcessingUI.tsx#L12-L25)
+- [pdf.ts:8-10](file://src/lib/pdf.ts#L8-L10)

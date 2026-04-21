@@ -42,7 +42,7 @@ export default function StudyHeatmap({ data }: StudyHeatmapProps) {
     return "bg-violet-500 border-violet-400 text-white shadow-[0_0_8px_rgba(139,92,246,0.5)]";
   };
 
-  const getMonthLabels = () => {
+  const monthLabels = useMemo(() => {
     const labels: { label: string; colIndex: number }[] = [];
     let currentMonth = "";
     
@@ -57,7 +57,7 @@ export default function StudyHeatmap({ data }: StudyHeatmapProps) {
     });
     
     return labels;
-  };
+  }, [columns]);
 
   if (!mounted) {
     return (
@@ -66,8 +66,6 @@ export default function StudyHeatmap({ data }: StudyHeatmapProps) {
       </div>
     );
   }
-
-  const monthLabels = getMonthLabels();
 
   return (
     <div className="w-full overflow-x-auto pb-4">
