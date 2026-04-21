@@ -1,5 +1,4 @@
-// pdf-parse ships CommonJS only — use require() to avoid ESM default-export issues
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+import { getDocument, type PDFDocumentProxy } from "pdfjs-dist";
 
 export interface PDFResult {
   text: string;
@@ -9,29 +8,48 @@ export interface PDFResult {
 
 /**
  * Parse a PDF buffer and return cleaned text with metadata.
+ * Uses pdfjs-dist directly (no native canvas dependency) so it works
+ * reliably in Vercel serverless functions.
  */
 export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
-  // Vercel Serverless doesn't provide DOMMatrix (browser API) which recent
-  // pdf.js builds may expect. Provide a lightweight polyfill so `pdf-parse`
-  // can run in Node without native canvas.
-  if (typeof (globalThis as unknown as { DOMMatrix?: unknown }).DOMMatrix === "undefined") {
-    try {
-      const dm = await import("dommatrix");
-      // `dommatrix` exports CSSMatrix as default; use it as DOMMatrix shim.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (globalThis as any).DOMMatrix = (dm as any).default ?? dm;
-    } catch {
-      // If polyfill fails, pdf-parse will throw a clearer runtime error.
+  // Load the PDF document from the buffer
+  const data = new Uint8Array(buffer);
+  const doc: PDFDocumentProxy = await getDocument({
+    data,
+    // Disable font rendering — we only need text extraction
+    useSystemFonts: true,
+  }).promise;
+
+  const pageCount = doc.numPages;
+  const pageTexts: string[] = [];
+
+  for (let i = 1; i <= pageCount; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    // Concatenate text items with spaces; respect line breaks via transform y-coordinates
+    const items = content.items;
+    let lastY: number | null = null;
+    let line = "";
+    const lines: string[] = [];
+
+    for (const item of items) {
+      if (!("str" in item)) continue;
+      const y = item.transform[5]; // vertical position
+      if (lastY !== null && Math.abs(y - lastY) > 2) {
+        // New line
+        lines.push(line);
+        line = item.str;
+      } else {
+        line += (line ? " " : "") + item.str;
+      }
+      lastY = y;
     }
+    if (line) lines.push(line);
+
+    pageTexts.push(lines.join("\n"));
   }
 
-  // Lazy load the parser heavily reducing cold start API bloat
-  const pdfParseReq = await import("pdf-parse");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfParse = ((pdfParseReq as any).default || pdfParseReq) as any;
-  const data = await pdfParse(buffer);
-
-  let text = data.text;
+  let text = pageTexts.join("\n\n");
 
   // Remove page number patterns like "Page 1 of 10", "1 / 10", "- 1 -"
   text = text.replace(/\bPage\s+\d+\s+of\s+\d+\b/gi, "");
@@ -55,7 +73,7 @@ export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
 
   return {
     text,
-    pageCount: data.numpages,
+    pageCount,
     charCount: text.length,
   };
 }
