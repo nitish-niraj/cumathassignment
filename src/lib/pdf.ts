@@ -1,7 +1,4 @@
-import {
-  getDocument,
-  type PDFDocumentProxy,
-} from "pdfjs-dist/legacy/build/pdf.mjs";
+import { PDFParse } from "pdf-parse";
 
 export interface PDFResult {
   text: string;
@@ -11,53 +8,20 @@ export interface PDFResult {
 
 /**
  * Parse a PDF buffer and return cleaned text with metadata.
- * Uses pdfjs-dist directly (no native canvas dependency) so it works
- * reliably in Vercel serverless functions.
+ * Uses pdf-parse for stable serverless compatibility.
  */
 export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
-  const data = new Uint8Array(buffer);
+  const parser = new PDFParse({ data: buffer });
+  let pageCount = 0;
+  let text = "";
 
-  const documentInit = {
-    data,
-    // Serverless runtime: avoid external worker file resolution issues.
-    disableWorker: true,
-    useSystemFonts: true,
-    isEvalSupported: false,
-    disableAutoFetch: true,
-  };
-
-  const doc: PDFDocumentProxy = await getDocument(
-    documentInit as unknown as Parameters<typeof getDocument>[0],
-  ).promise;
-
-  const pageCount = doc.numPages;
-  const pageTexts: string[] = [];
-
-  for (let i = 1; i <= pageCount; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    const items = content.items;
-    let lastY: number | null = null;
-    let line = "";
-    const lines: string[] = [];
-
-    for (const item of items) {
-      if (!("str" in item)) continue;
-      const y = item.transform[5];
-      if (lastY !== null && Math.abs(y - lastY) > 2) {
-        lines.push(line);
-        line = item.str;
-      } else {
-        line += (line ? " " : "") + item.str;
-      }
-      lastY = y;
-    }
-    if (line) lines.push(line);
-
-    pageTexts.push(lines.join("\n"));
+  try {
+    const parsed = await parser.getText();
+    pageCount = parsed.total ?? 0;
+    text = parsed.text ?? "";
+  } finally {
+    await parser.destroy().catch(() => {});
   }
-
-  let text = pageTexts.join("\n\n");
 
   // Remove page number patterns like "Page 1 of 10", "1 / 10", "- 1 -"
   text = text.replace(/\bPage\s+\d+\s+of\s+\d+\b/gi, "");
