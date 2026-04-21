@@ -17,7 +17,16 @@
 - [DeckBrowser.tsx](file://src/components/deck/DeckBrowser.tsx)
 - [DeckCard.tsx](file://src/components/deck/DeckCard.tsx)
 - [Flashcard3D.tsx](file://src/components/flashcard/Flashcard3D.tsx)
+- [CountUp.tsx](file://src/components/shared/CountUp.tsx)
+- [MasteryRing.tsx](file://src/components/stats/MasteryRing.tsx)
+- [ActivityHeatmap.tsx](file://src/components/stats/ActivityHeatmap.tsx)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated animation implementations to reflect custom requestAnimationFrame-based animations replacing Framer Motion in CountUp, MasteryRing, and PageWrapper components
+- Updated component analysis to reflect simplified component structures eliminating hydration errors in Next.js applications
+- Revised design system implementation to clarify which components still use Framer Motion versus custom animation implementations
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -32,10 +41,12 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes recall’s component architecture with a focus on the layout hierarchy starting at AppLayout and its child components. It documents reusable UI components, shared utilities, and feature-specific components, along with composition patterns, prop interfaces, state management integration, lifecycle and event handling, inter-component communication, design system implementation using Tailwind CSS and Framer Motion, responsive design patterns, accessibility considerations, and customization options. Examples of usage and integration patterns are included to guide developers building on or extending the system.
+This document describes recall's component architecture with a focus on the layout hierarchy starting at AppLayout and its child components. It documents reusable UI components, shared utilities, and feature-specific components, along with composition patterns, prop interfaces, state management integration, lifecycle and event handling, inter-component communication, design system implementation using Tailwind CSS and Framer Motion, responsive design patterns, accessibility considerations, and customization options. Examples of usage and integration patterns are included to guide developers building on or extending the system.
+
+**Updated** The architecture now emphasizes custom animation implementations using requestAnimationFrame to eliminate hydration errors in Next.js applications, while maintaining the design system's visual appeal and performance characteristics.
 
 ## Project Structure
-The Next.js application bootstraps the UI through a root layout that wraps all pages in AppLayout. AppLayout conditionally renders either a full-study layout or a dashboard layout with sidebar and top bar. Feature areas such as decks, stats, and uploads render within AppLayout’s main content area. Reusable UI primitives live under components/ui, shared utilities under components/shared, and feature-specific components under components/<feature>.
+The Next.js application bootstraps the UI through a root layout that wraps all pages in AppLayout. AppLayout conditionally renders either a full-study layout or a dashboard layout with sidebar and top bar. Feature areas such as decks, stats, and uploads render within AppLayout's main content area. Reusable UI primitives live under components/ui, shared utilities under components/shared, and feature-specific components under components/<feature>.
 
 ```mermaid
 graph TB
@@ -48,16 +59,16 @@ DashboardLayout --> Main["Main Content<br/>pages/decks, stats, upload"]
 Main --> PageWrapper["PageWrapper<br/>src/components/layout/PageWrapper.tsx"]
 PageWrapper --> Features["Feature Components<br/>DeckBrowser, Flashcard3D, etc."]
 Features --> UI["Reusable UI<br/>button, input, select, dropdown-menu"]
-Features --> Shared["Shared Utilities<br/>EmptyState, Skeleton"]
+Features --> Shared["Shared Utilities<br/>EmptyState, Skeleton, CountUp, MasteryRing, ActivityHeatmap"]
 AppLayout --> ToastProvider["ToastProvider<br/>src/components/ui/ToastProvider.tsx"]
 ```
 
 **Diagram sources**
 - [RootLayout.tsx:39-51](file://src/app/layout.tsx#L39-L51)
 - [AppLayout.tsx:15-40](file://src/components/layout/AppLayout.tsx#L15-L40)
-- [Sidebar.tsx:18-97](file://src/components/layout/Sidebar.tsx#L18-L97)
-- [TopBar.tsx:16-40](file://src/components/layout/TopBar.tsx#L16-L40)
-- [PageWrapper.tsx:18-29](file://src/components/layout/PageWrapper.tsx#L18-L29)
+- [Sidebar.tsx:18-93](file://src/components/layout/Sidebar.tsx#L18-L93)
+- [TopBar.tsx:16-41](file://src/components/layout/TopBar.tsx#L16-L41)
+- [PageWrapper.tsx:12-14](file://src/components/layout/PageWrapper.tsx#L12-L14)
 - [ToastProvider.tsx:28-65](file://src/components/ui/ToastProvider.tsx#L28-L65)
 
 **Section sources**
@@ -74,30 +85,30 @@ This section outlines the primary layout and UI components that form the backbon
   - Lifecycle: Uses path navigation hook to compute mode; renders children inside a dark-themed container with responsive spacing.
 
 - PageWrapper
-  - Purpose: Adds page transition animations and consistent vertical spacing.
+  - Purpose: Provides simple page layout with consistent vertical spacing.
   - Props: children (ReactNode), className (optional)
-  - Behavior: Wraps content with a motion div and applies a transition configuration for smooth page changes.
+  - Behavior: Wraps content with a simple div structure, eliminating complex animation dependencies that could cause hydration issues.
 
 - Sidebar
   - Purpose: Navigation and quick stats for due cards.
   - Props: none
-  - Behavior: Computes active nav item based on path, fetches due count from an API endpoint, and renders navigation links with animated indicators using layoutId and Framer Motion.
+  - Behavior: Computes active nav item based on path, fetches due count from an API endpoint, and renders navigation links with animated indicators using layoutId and Framer Motion for the active state highlight.
 
 - TopBar
   - Purpose: Dynamic header with contextual title and current date.
   - Props: none
-  - Behavior: Derives title from pathname and sets today’s date on mount.
+  - Behavior: Derives title from pathname and sets today's date on mount.
 
 - ToastProvider
   - Purpose: Global toast notifications with animated entries/exits.
   - Props: none
-  - Behavior: Consumes a toast store, renders icons per toast type, and supports dismissal.
+  - Behavior: Consumes a toast store, renders icons per toast type, and supports dismissal using Framer Motion for smooth animations.
 
 **Section sources**
 - [AppLayout.tsx:11-40](file://src/components/layout/AppLayout.tsx#L11-L40)
-- [PageWrapper.tsx:8-29](file://src/components/layout/PageWrapper.tsx#L8-L29)
-- [Sidebar.tsx:18-97](file://src/components/layout/Sidebar.tsx#L18-L97)
-- [TopBar.tsx:16-40](file://src/components/layout/TopBar.tsx#L16-L40)
+- [PageWrapper.tsx:7-14](file://src/components/layout/PageWrapper.tsx#L7-L14)
+- [Sidebar.tsx:17-93](file://src/components/layout/Sidebar.tsx#L17-L93)
+- [TopBar.tsx:16-41](file://src/components/layout/TopBar.tsx#L16-L41)
 - [ToastProvider.tsx:28-65](file://src/components/ui/ToastProvider.tsx#L28-L65)
 
 ## Architecture Overview
@@ -160,8 +171,8 @@ AppLayout --> CommandPalette : "always"
 
 **Diagram sources**
 - [AppLayout.tsx:6-9](file://src/components/layout/AppLayout.tsx#L6-L9)
-- [Sidebar.tsx:18-97](file://src/components/layout/Sidebar.tsx#L18-L97)
-- [TopBar.tsx:16-40](file://src/components/layout/TopBar.tsx#L16-L40)
+- [Sidebar.tsx:18-93](file://src/components/layout/Sidebar.tsx#L18-L93)
+- [TopBar.tsx:16-41](file://src/components/layout/TopBar.tsx#L16-L41)
 - [ToastProvider.tsx:28-65](file://src/components/ui/ToastProvider.tsx#L28-L65)
 
 **Section sources**
@@ -237,7 +248,7 @@ DropdownMenuContent <|-- DropdownMenuItem
 - [dropdown-menu.tsx:1-258](file://src/components/ui/dropdown-menu.tsx#L1-L258)
 
 ### Shared Utilities
-Shared components encapsulate common UI patterns.
+Shared components encapsulate common UI patterns with custom animation implementations.
 
 - EmptyState
   - Purpose: Present friendly empty states with optional CTA.
@@ -248,6 +259,21 @@ Shared components encapsulate common UI patterns.
   - Purpose: Provide skeleton loaders with a shimmer animation.
   - Props: className.
   - Composition: Applies a base skeleton class and animation utility.
+
+- CountUp
+  - Purpose: Animated number counter with smooth easing.
+  - Props: value, duration, className.
+  - Behavior: Uses requestAnimationFrame for smooth, hydration-safe animations with cubic easing.
+
+- MasteryRing
+  - Purpose: Animated progress ring with smooth transitions.
+  - Props: percentage.
+  - Behavior: Uses requestAnimationFrame for progress animation with cubic easing, eliminating hydration issues.
+
+- ActivityHeatmap
+  - Purpose: Visual representation of study activity over time.
+  - Props: countsByDate (Record<string, number>).
+  - Behavior: Renders intensity-based squares with pulse animation for loading states.
 
 ```mermaid
 classDiagram
@@ -261,15 +287,37 @@ class EmptyState {
 class Skeleton {
 +className : string
 }
+class CountUp {
++value : number
++duration : number
++className : string
+}
+class MasteryRing {
++percentage : number
+}
+class ActivityHeatmap {
++countsByDate : Record~string, number~
+}
+EmptyState <.. Shared : "shared utilities"
+Skeleton <.. Shared : "shared utilities"
+CountUp <.. Shared : "shared utilities"
+MasteryRing <.. Shared : "shared utilities"
+ActivityHeatmap <.. Shared : "shared utilities"
 ```
 
 **Diagram sources**
 - [EmptyState.tsx:6-27](file://src/components/shared/EmptyState.tsx#L6-L27)
 - [Skeleton.tsx:3-9](file://src/components/shared/Skeleton.tsx#L3-L9)
+- [CountUp.tsx:5-36](file://src/components/shared/CountUp.tsx#L5-L36)
+- [MasteryRing.tsx:5-67](file://src/components/stats/MasteryRing.tsx#L5-L67)
+- [ActivityHeatmap.tsx:6-69](file://src/components/stats/ActivityHeatmap.tsx#L6-L69)
 
 **Section sources**
 - [EmptyState.tsx:1-28](file://src/components/shared/EmptyState.tsx#L1-L28)
 - [Skeleton.tsx:1-10](file://src/components/shared/Skeleton.tsx#L1-L10)
+- [CountUp.tsx:1-37](file://src/components/shared/CountUp.tsx#L1-L37)
+- [MasteryRing.tsx:1-68](file://src/components/stats/MasteryRing.tsx#L1-L68)
+- [ActivityHeatmap.tsx:1-70](file://src/components/stats/ActivityHeatmap.tsx#L1-L70)
 
 ### Feature-Specific Components
 Feature components demonstrate composition patterns and state management integration.
@@ -283,12 +331,12 @@ Feature components demonstrate composition patterns and state management integra
 - DeckCard
   - Purpose: Individual deck tile with mastery progress visualization.
   - Props: deck (DeckCardModel).
-  - Composition: Uses motion for hover and progress animation; navigates to deck detail on click.
+  - Composition: Uses Framer Motion for hover effects and progress animation; navigates to deck detail on click.
 
 - Flashcard3D
   - Purpose: Interactive 3D flashcard with keyboard support and difficulty badges.
   - Props: front, back, difficulty, flipped (controlled), onFlipChange.
-  - Composition: Handles keyboard events, animates flip transitions, and applies gradient borders.
+  - Composition: Handles keyboard events, animates flip transitions using Framer Motion, and applies gradient borders.
 
 ```mermaid
 classDiagram
@@ -338,7 +386,7 @@ DeckCardModel <.. DeckCard : "props"
 **Section sources**
 - [DeckBrowser.tsx:1-188](file://src/components/deck/DeckBrowser.tsx#L1-L188)
 - [DeckCard.tsx:1-50](file://src/components/deck/DeckCard.tsx#L1-L50)
-- [Flashcard3D.tsx:1-113](file://src/components/flashcard/Flashcard3D.tsx#L1-L113)
+- [Flashcard3D.tsx:1-114](file://src/components/flashcard/Flashcard3D.tsx#L1-L114)
 
 ### Component Composition Patterns
 - Slot composition: Button uses a slot to wrap either a native button or a child component, enabling semantic composition.
@@ -346,6 +394,7 @@ DeckCardModel <.. DeckCard : "props"
 - Conditional rendering: AppLayout switches layouts based on route detection; Sidebar highlights active items and fetches dynamic data.
 - Controlled props: Flashcard3D exposes a controlled flip state and callback, allowing parent shells to manage state centrally.
 - Memoization: DeckBrowser uses memoized computations for filtering and sorting to optimize re-renders.
+- Custom animations: CountUp and MasteryRing use requestAnimationFrame-based animations for hydration-safe transitions.
 
 **Section sources**
 - [button.tsx:37-43](file://src/components/ui/button.tsx#L37-L43)
@@ -354,22 +403,28 @@ DeckCardModel <.. DeckCard : "props"
 - [AppLayout.tsx:15-40](file://src/components/layout/AppLayout.tsx#L15-L40)
 - [Flashcard3D.tsx:17-26](file://src/components/flashcard/Flashcard3D.tsx#L17-L26)
 - [DeckBrowser.tsx:41-92](file://src/components/deck/DeckBrowser.tsx#L41-L92)
+- [CountUp.tsx:15-36](file://src/components/shared/CountUp.tsx#L15-L36)
+- [MasteryRing.tsx:18-35](file://src/components/stats/MasteryRing.tsx#L18-L35)
 
 ### Prop Interfaces and State Management Integration
 - AppLayout: Receives children; no internal state; relies on routing for mode selection.
 - Sidebar: Manages dueCount state and fetches data on mount; derives active path from pathname.
-- TopBar: Manages today’s date string; computes title from pathname.
-- ToastProvider: Consumes a toast store to render notifications and supports dismissal.
+- TopBar: Manages today's date string; computes title from pathname.
+- ToastProvider: Consumes a toast store to render notifications and supports dismissal using Framer Motion.
 - DeckBrowser: Owns local state for query, sort, and filter; computes derived data via useMemo.
 - Flashcard3D: Controlled component with external state via flipped and onFlipChange.
+- CountUp: Uses requestAnimationFrame for smooth number transitions with configurable duration.
+- MasteryRing: Uses requestAnimationFrame for progress ring animations with cubic easing.
 
 **Section sources**
 - [AppLayout.tsx:11-13](file://src/components/layout/AppLayout.tsx#L11-L13)
-- [Sidebar.tsx:20-39](file://src/components/layout/Sidebar.tsx#L20-L39)
+- [Sidebar.tsx:21-46](file://src/components/layout/Sidebar.tsx#L21-L46)
 - [TopBar.tsx:18-30](file://src/components/layout/TopBar.tsx#L18-L30)
 - [ToastProvider.tsx:29](file://src/components/ui/ToastProvider.tsx#L29)
 - [DeckBrowser.tsx:35-39](file://src/components/deck/DeckBrowser.tsx#L35-L39)
 - [Flashcard3D.tsx:17-26](file://src/components/flashcard/Flashcard3D.tsx#L17-L26)
+- [CountUp.tsx:11-36](file://src/components/shared/CountUp.tsx#L11-L36)
+- [MasteryRing.tsx:14-35](file://src/components/stats/MasteryRing.tsx#L14-L35)
 
 ### Component Lifecycle, Event Handling, and Inter-Component Communication
 - Lifecycle: AppLayout mounts once per navigation; Sidebar fetches due count on mount and path changes; TopBar initializes date on mount; DeckBrowser manages local state and recomputes on updates.
@@ -378,14 +433,17 @@ DeckCardModel <.. DeckCard : "props"
   - Parent-to-child: DeckBrowser passes filtered decks to DeckGrid; DeckCard receives deck model; Flashcard3D receives controlled flip state.
   - Store-driven: ToastProvider reads from a toast store and removes toasts by id.
   - Navigation: Sidebar and TopBar drive route changes via Link/Navigation.
+  - Animation-safe: CountUp and MasteryRing use requestAnimationFrame to prevent hydration conflicts.
 
 **Section sources**
 - [AppLayout.tsx:15-40](file://src/components/layout/AppLayout.tsx#L15-L40)
-- [Sidebar.tsx:22-39](file://src/components/layout/Sidebar.tsx#L22-L39)
+- [Sidebar.tsx:21-46](file://src/components/layout/Sidebar.tsx#L21-L46)
 - [TopBar.tsx:20-28](file://src/components/layout/TopBar.tsx#L20-L28)
 - [DeckBrowser.tsx:94-187](file://src/components/deck/DeckBrowser.tsx#L94-L187)
 - [Flashcard3D.tsx:29-40](file://src/components/flashcard/Flashcard3D.tsx#L29-L40)
 - [ToastProvider.tsx:52-58](file://src/components/ui/ToastProvider.tsx#L52-L58)
+- [CountUp.tsx:15-36](file://src/components/shared/CountUp.tsx#L15-L36)
+- [MasteryRing.tsx:18-35](file://src/components/stats/MasteryRing.tsx#L18-L35)
 
 ### Design System Implementation (Tailwind CSS and Framer Motion)
 - Tailwind CSS:
@@ -393,15 +451,24 @@ DeckCardModel <.. DeckCard : "props"
   - Component-specific variants for buttons and inputs.
   - Responsive utilities for mobile-first layouts (e.g., lg: prefixes).
 - Framer Motion:
-  - Page transitions via PageWrapper with custom easing and duration.
-  - Animated indicators in Sidebar using layoutId for smooth transitions.
-  - Interactive animations in DeckCard and Flashcard3D for hover and flip effects.
+  - Page transitions: PageWrapper no longer uses Framer Motion for page transitions.
+  - Animated indicators: Sidebar uses Framer Motion for smooth active state highlighting.
+  - Interactive animations: DeckCard uses Framer Motion for hover effects and progress bars.
+  - Notification animations: ToastProvider uses Framer Motion for smooth toast entry/exit animations.
+  - 3D interactions: Flashcard3D uses Framer Motion for flip animations.
+- Custom animations:
+  - CountUp and MasteryRing use requestAnimationFrame-based animations for hydration-safe transitions.
+  - ActivityHeatmap uses pulse animation for loading states.
 
 **Section sources**
-- [PageWrapper.tsx:18-29](file://src/components/layout/PageWrapper.tsx#L18-L29)
-- [Sidebar.tsx:70-76](file://src/components/layout/Sidebar.tsx#L70-L76)
+- [PageWrapper.tsx:12-14](file://src/components/layout/PageWrapper.tsx#L12-L14)
+- [Sidebar.tsx:69-76](file://src/components/layout/Sidebar.tsx#L69-L76)
 - [DeckCard.tsx:23-47](file://src/components/deck/DeckCard.tsx#L23-L47)
-- [Flashcard3D.tsx:61-71](file://src/components/flashcard/Flashcard3D.tsx#L61-L71)
+- [Flashcard3D.tsx:61-72](file://src/components/flashcard/Flashcard3D.tsx#L61-L72)
+- [ToastProvider.tsx:39-62](file://src/components/ui/ToastProvider.tsx#L39-L62)
+- [CountUp.tsx:19-27](file://src/components/shared/CountUp.tsx#L19-L27)
+- [MasteryRing.tsx:21-29](file://src/components/stats/MasteryRing.tsx#L21-L29)
+- [ActivityHeatmap.tsx:34](file://src/components/stats/ActivityHeatmap.tsx#L34)
 
 ### Responsive Design Patterns and Accessibility Compliance
 - Responsive patterns:
@@ -412,10 +479,11 @@ DeckCardModel <.. DeckCard : "props"
   - Semantic HTML and proper labeling (e.g., aria-label on close button).
   - Focus-visible rings and keyboard operability (e.g., Flashcard3D keyboard handling).
   - Contrast and readable typography using zinc palette.
+  - Hydration-safe animations prevent visual glitches during SSR.
 
 **Section sources**
 - [AppLayout.tsx:29-39](file://src/components/layout/AppLayout.tsx#L29-L39)
-- [Sidebar.tsx:49-97](file://src/components/layout/Sidebar.tsx#L49-L97)
+- [Sidebar.tsx:49-93](file://src/components/layout/Sidebar.tsx#L49-L93)
 - [ToastProvider.tsx:52-58](file://src/components/ui/ToastProvider.tsx#L52-L58)
 - [Flashcard3D.tsx:29-40](file://src/components/flashcard/Flashcard3D.tsx#L29-L40)
 
@@ -424,12 +492,15 @@ DeckCardModel <.. DeckCard : "props"
 - Theming: Tailwind utilities enable easy overrides for colors, spacing, and typography.
 - Animation: Framer Motion configurations are exposed via props and defaults; consumers can adjust easing and durations.
 - Composition: Slot-based Button allows wrapping with Links or other components; Select/Dropdown Menu provide composable primitives.
+- Custom animations: CountUp and MasteryRing support configurable duration and easing for different animation needs.
 
 **Section sources**
 - [button.tsx:7-29](file://src/components/ui/button.tsx#L7-L29)
 - [select.tsx:15-32](file://src/components/ui/select.tsx#L15-L32)
 - [dropdown-menu.tsx:23-52](file://src/components/ui/dropdown-menu.tsx#L23-L52)
 - [PageWrapper.tsx:13-16](file://src/components/layout/PageWrapper.tsx#L13-L16)
+- [CountUp.tsx:5-9](file://src/components/shared/CountUp.tsx#L5-L9)
+- [MasteryRing.tsx:5-7](file://src/components/stats/MasteryRing.tsx#L5-L7)
 
 ## Dependency Analysis
 The following diagram shows key dependencies among layout, UI, and feature components.
@@ -446,6 +517,11 @@ DeckBrowser --> DeckCard
 DeckBrowser --> UIInput["Input"]
 DeckBrowser --> UISelect["Select"]
 Flashcard3D --> Motion["Framer Motion"]
+ToastProvider --> Motion
+DeckCard --> Motion
+CountUp --> RAF["requestAnimationFrame"]
+MasteryRing --> RAF
+ActivityHeatmap --> Pulse["pulse animation"]
 Button --> RadixSlot["@radix-ui/react-slot"]
 Select --> RadixSelect["@radix-ui/react-select"]
 DropdownMenu --> RadixDropdown["radix-ui"]
@@ -454,9 +530,14 @@ DropdownMenu --> RadixDropdown["radix-ui"]
 **Diagram sources**
 - [RootLayout.tsx:39-51](file://src/app/layout.tsx#L39-L51)
 - [AppLayout.tsx:6-9](file://src/components/layout/AppLayout.tsx#L6-L9)
-- [Sidebar.tsx:24-32](file://src/components/layout/Sidebar.tsx#L24-L32)
+- [Sidebar.tsx:24-38](file://src/components/layout/Sidebar.tsx#L24-L38)
 - [DeckBrowser.tsx:7-15](file://src/components/deck/DeckBrowser.tsx#L7-L15)
 - [Flashcard3D.tsx:4](file://src/components/flashcard/Flashcard3D.tsx#L4)
+- [ToastProvider.tsx:3](file://src/components/ui/ToastProvider.tsx#L3)
+- [DeckCard.tsx:4](file://src/components/deck/DeckCard.tsx#L4)
+- [CountUp.tsx:3](file://src/components/shared/CountUp.tsx#L3)
+- [MasteryRing.tsx:3](file://src/components/stats/MasteryRing.tsx#L3)
+- [ActivityHeatmap.tsx:3](file://src/components/stats/ActivityHeatmap.tsx#L3)
 - [button.tsx:2](file://src/components/ui/button.tsx#L2)
 - [select.tsx:4](file://src/components/ui/select.tsx#L4)
 - [dropdown-menu.tsx:5](file://src/components/ui/dropdown-menu.tsx#L5)
@@ -464,9 +545,14 @@ DropdownMenu --> RadixDropdown["radix-ui"]
 **Section sources**
 - [RootLayout.tsx:39-51](file://src/app/layout.tsx#L39-L51)
 - [AppLayout.tsx:6-9](file://src/components/layout/AppLayout.tsx#L6-L9)
-- [Sidebar.tsx:24-32](file://src/components/layout/Sidebar.tsx#L24-L32)
+- [Sidebar.tsx:24-38](file://src/components/layout/Sidebar.tsx#L24-L38)
 - [DeckBrowser.tsx:7-15](file://src/components/deck/DeckBrowser.tsx#L7-L15)
 - [Flashcard3D.tsx:4](file://src/components/flashcard/Flashcard3D.tsx#L4)
+- [ToastProvider.tsx:3](file://src/components/ui/ToastProvider.tsx#L3)
+- [DeckCard.tsx:4](file://src/components/deck/DeckCard.tsx#L4)
+- [CountUp.tsx:3](file://src/components/shared/CountUp.tsx#L3)
+- [MasteryRing.tsx:3](file://src/components/stats/MasteryRing.tsx#L3)
+- [ActivityHeatmap.tsx:3](file://src/components/stats/ActivityHeatmap.tsx#L3)
 - [button.tsx:2](file://src/components/ui/button.tsx#L2)
 - [select.tsx:4](file://src/components/ui/select.tsx#L4)
 - [dropdown-menu.tsx:5](file://src/components/ui/dropdown-menu.tsx#L5)
@@ -475,10 +561,9 @@ DropdownMenu --> RadixDropdown["radix-ui"]
 - Memoization: Use useMemo for expensive derived computations (e.g., DeckBrowser filtering/sorting).
 - Debouncing: Debounce search inputs to reduce re-renders during typing.
 - Conditional rendering: AppLayout avoids unnecessary DOM in study mode.
-- Animations: Keep motion configs lightweight; avoid heavy transforms on many elements simultaneously.
+- Animations: Custom requestAnimationFrame-based animations in CountUp and MasteryRing provide smooth transitions without hydration conflicts.
 - Network calls: Fetch due count once on mount and rely on cache policies suitable for stats.
-
-[No sources needed since this section provides general guidance]
+- Framer Motion optimization: Components that still use Framer Motion are optimized for minimal DOM overhead and smooth performance.
 
 ## Troubleshooting Guide
 - Navigation indicator not updating:
@@ -490,16 +575,22 @@ DropdownMenu --> RadixDropdown["radix-ui"]
 - Flashcard not flipping:
   - Ensure controlled flipped prop is toggled by parent and onFlipChange is passed down.
   - Verify keyboard event listeners do not conflict with input focus.
+- Animation not working:
+  - For CountUp and MasteryRing, verify requestAnimationFrame is supported in the environment.
+  - Check that animation values are properly updated and not causing infinite loops.
+- Hydration errors:
+  - Custom animation components use requestAnimationFrame to prevent SSR hydration conflicts.
+  - Ensure components are properly marked as client components.
 
 **Section sources**
 - [Sidebar.tsx:41-47](file://src/components/layout/Sidebar.tsx#L41-L47)
 - [ToastProvider.tsx:29](file://src/components/ui/ToastProvider.tsx#L29)
 - [Flashcard3D.tsx:24-26](file://src/components/flashcard/Flashcard3D.tsx#L24-L26)
+- [CountUp.tsx:15-36](file://src/components/shared/CountUp.tsx#L15-L36)
+- [MasteryRing.tsx:18-35](file://src/components/stats/MasteryRing.tsx#L18-L35)
 
 ## Conclusion
-recall’s component architecture emphasizes a clean separation between layout, reusable UI primitives, shared utilities, and feature-specific components. AppLayout serves as the central orchestrator, switching between study and dashboard modes while injecting global providers. The design system leverages Tailwind CSS for consistent styling and Framer Motion for delightful interactions. Composition patterns, controlled props, and memoization enable scalable and maintainable UI development. The provided examples and integration patterns offer a foundation for building new features and customizing existing ones.
-
-[No sources needed since this section summarizes without analyzing specific files]
+recall's component architecture emphasizes a clean separation between layout, reusable UI primitives, shared utilities, and feature-specific components. AppLayout serves as the central orchestrator, switching between study and dashboard modes while injecting global providers. The design system leverages Tailwind CSS for consistent styling and Framer Motion for delightful interactions where appropriate. Recent optimizations include custom requestAnimationFrame-based animations in CountUp and MasteryRing to eliminate hydration errors while maintaining smooth user experiences. Composition patterns, controlled props, and memoization enable scalable and maintainable UI development. The provided examples and integration patterns offer a foundation for building new features and customizing existing ones.
 
 ## Appendices
 - Example usage patterns:
@@ -508,5 +599,6 @@ recall’s component architecture emphasizes a clean separation between layout, 
   - Compose Select and Dropdown Menu primitives for complex forms and settings.
   - Render EmptyState when collections are empty and provide actionable CTAs.
   - Manage flashcard flip state in a parent shell and pass controlled props to Flashcard3D.
-
-[No sources needed since this section provides general guidance]
+  - Use CountUp for animated number displays with configurable duration and easing.
+  - Use MasteryRing for progress visualization with smooth, hydration-safe animations.
+  - Leverage Framer Motion for interactive elements where performance and user experience benefit from sophisticated animations.
