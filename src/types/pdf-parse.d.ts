@@ -1,4 +1,4 @@
-declare module "pdf-parse" {
+declare module "pdf-parse/lib/pdf-parse.js" {
   export interface PDFParseResult {
     numpages: number;
     numrender: number;
@@ -12,4 +12,9 @@ declare module "pdf-parse" {
     dataBuffer: Buffer | Uint8Array,
     options?: Record<string, unknown>,
   ): Promise<PDFParseResult>;
+}
+
+declare module "pdf-parse" {
+  import pdfParse from "pdf-parse/lib/pdf-parse.js";
+  export default pdfParse;
 }
