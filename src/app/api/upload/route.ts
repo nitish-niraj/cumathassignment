@@ -8,6 +8,60 @@ export const runtime = "nodejs";
 // Allow up to 5 minutes — large PDFs + free-tier AI can be slow
 export const maxDuration = 300;
 
+function getPublicErrorMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : "";
+
+  if (msg.includes("Missing OPENROUTER_API_KEY")) {
+    return "AI generation is not configured. Please set OPENROUTER_API_KEY in the server environment and try again.";
+  }
+
+  if (
+    msg.includes("rate limit") ||
+    msg.includes("Rate limit") ||
+    msg.includes("429")
+  ) {
+    return "AI rate limit reached. The free tier has usage caps — please wait a minute and try again.";
+  }
+
+  if (
+    msg.includes("model") &&
+    (msg.includes("not found") || msg.includes("not available") || msg.includes("does not exist"))
+  ) {
+    return "The AI model is currently unavailable. Please try again later.";
+  }
+
+  if (
+    msg.includes("401") ||
+    msg.includes("Invalid API key") ||
+    msg.includes("Incorrect API key")
+  ) {
+    return "AI API key is invalid. Please check your OPENROUTER_API_KEY setting.";
+  }
+
+  if (
+    msg.includes("500") ||
+    msg.includes("502") ||
+    msg.includes("503") ||
+    msg.includes("overloaded")
+  ) {
+    return "The AI service is temporarily overloaded. Please try again in a moment.";
+  }
+
+  // Prisma often throws connection / auth errors when DATABASE_URL is missing or wrong.
+  if (
+    msg.toLowerCase().includes("database_url") ||
+    msg.toLowerCase().includes("prisma") ||
+    msg.toLowerCase().includes("p100") || // Prisma error codes: P1000.. etc
+    msg.toLowerCase().includes("can't reach database server") ||
+    msg.toLowerCase().includes("authentication failed")
+  ) {
+    return "Database connection failed. Please verify DATABASE_URL is set correctly in your deployment environment and try again.";
+  }
+
+  console.error("[upload] Unrecognized error:", msg);
+  return "Something went wrong. Please try again.";
+}
+
 // ── Helper: write a JSON line to the stream ───────────────────────────────────
 function encode(obj: object): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(obj) + "\n");
@@ -30,6 +84,27 @@ function checkRateLimit(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  // ── Environment preflight (fail fast with useful message) ───────────────────
+  if (!process.env.DATABASE_URL) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "Server is missing DATABASE_URL. Set it in your deployment environment and redeploy.",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (!process.env.OPENROUTER_API_KEY) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "Server is missing OPENROUTER_API_KEY. Set it in your deployment environment to enable AI generation.",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   // ── Rate Limiting ────────────────────────────────────────────────────────────
   const ip = req.ip ?? req.headers.get("x-forwarded-for") ?? "127.0.0.1";
   if (!checkRateLimit(ip)) {
@@ -67,10 +142,10 @@ export async function POST(req: NextRequest) {
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
-  const MAX_SIZE = 5 * 1024 * 1024; // 5 MB ceiling
+  const MAX_SIZE = 20 * 1024 * 1024; // 20 MB ceiling (keep in sync with UI copy)
   if (file.size > MAX_SIZE) {
     return new Response(
-      JSON.stringify({ error: "File too large. Maximum size is 5MB." }),
+      JSON.stringify({ error: "File too large. Maximum size is 20MB." }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
@@ -195,7 +270,7 @@ export async function POST(req: NextRequest) {
         writer.write(
           encode({
             status: "error",
-            message: "Something went wrong. Please try again.",
+            message: getPublicErrorMessage(err),
           }),
         );
       } catch {

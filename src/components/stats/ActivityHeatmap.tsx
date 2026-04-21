@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { format, subDays } from "date-fns";
 
@@ -19,9 +20,22 @@ function getIntensityClass(value: number) {
 }
 
 export default function ActivityHeatmap({ countsByDate }: ActivityHeatmapProps) {
-  const today = new Date();
-  const days = Array.from({ length: 91 }, (_, index) => subDays(today, 90 - index));
-  const columns = Array.from({ length: 13 }, (_, index) => days.slice(index * 7, index * 7 + 7));
+  const [columns, setColumns] = useState<Date[][]>([]);
+
+  useEffect(() => {
+    const today = new Date();
+    const days = Array.from({ length: 91 }, (_, index) => subDays(today, 90 - index));
+    const cols = Array.from({ length: 13 }, (_, index) => days.slice(index * 7, index * 7 + 7));
+    setColumns(cols);
+  }, []);
+
+  if (columns.length === 0) {
+    return (
+      <div className="flex gap-3 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
+        <div className="h-24 w-full animate-pulse rounded bg-zinc-800/30" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-3 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">

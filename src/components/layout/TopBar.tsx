@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 function getTitle(pathname: string) {
@@ -15,17 +15,19 @@ function getTitle(pathname: string) {
 
 export default function TopBar() {
   const pathname = usePathname();
+  const [today, setToday] = useState("");
 
-  const title = useMemo(() => getTitle(pathname), [pathname]);
-  const today = useMemo(
-    () =>
+  useEffect(() => {
+    setToday(
       new Intl.DateTimeFormat("en-US", {
         weekday: "long",
         month: "short",
         day: "numeric",
       }).format(new Date()),
-    [],
-  );
+    );
+  }, []);
+
+  const title = useMemo(() => getTitle(pathname), [pathname]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl">

@@ -11,6 +11,20 @@ export interface PDFResult {
  * Parse a PDF buffer and return cleaned text with metadata.
  */
 export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
+  // Vercel Serverless doesn't provide DOMMatrix (browser API) which recent
+  // pdf.js builds may expect. Provide a lightweight polyfill so `pdf-parse`
+  // can run in Node without native canvas.
+  if (typeof (globalThis as unknown as { DOMMatrix?: unknown }).DOMMatrix === "undefined") {
+    try {
+      const dm = await import("dommatrix");
+      // `dommatrix` exports CSSMatrix as default; use it as DOMMatrix shim.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (globalThis as any).DOMMatrix = (dm as any).default ?? dm;
+    } catch {
+      // If polyfill fails, pdf-parse will throw a clearer runtime error.
+    }
+  }
+
   // Lazy load the parser heavily reducing cold start API bloat
   const pdfParseReq = await import("pdf-parse");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

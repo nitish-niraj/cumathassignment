@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import StudySessionShell from "@/components/flashcard/StudySessionShell";
 import { db } from "@/lib/db";
 import { getCardsForStudy, type CardForReview } from "@/lib/spaced-repetition";
+import type { Prisma } from "@prisma/client";
 
 // Force dynamic since study queue relies on current timestamp
 export const dynamic = "force-dynamic";
@@ -27,14 +28,30 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default async function StudyPage({ params, searchParams }: StudyPageProps) {
-  const deck = await db.deck.findUnique({
-    where: {
-      id: params.id,
-    },
-    include: {
-      cards: true,
-    },
-  });
+  type DeckWithCards = Prisma.DeckGetPayload<{ include: { cards: true } }>;
+  let deck: DeckWithCards | null = null;
+
+  try {
+    deck = await db.deck.findUnique({
+      where: {
+        id: params.id,
+      },
+      include: {
+        cards: true,
+      },
+    });
+  } catch (err) {
+    console.error("[STUDY_PAGE]", err);
+    return (
+      <div className="mx-auto mt-16 max-w-xl rounded-2xl border border-red-500/20 bg-red-500/5 p-6">
+        <h2 className="text-lg font-semibold text-zinc-100">Couldn&apos;t start study session</h2>
+        <p className="mt-2 text-sm text-zinc-400">
+          The server failed while loading this deck. This is usually caused by a database configuration issue in production (missing/incorrect{" "}
+          <code className="text-zinc-300">DATABASE_URL</code>).
+        </p>
+      </div>
+    );
+  }
 
   if (!deck) {
     notFound();

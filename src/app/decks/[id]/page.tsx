@@ -7,6 +7,7 @@ import PageWrapper from "@/components/layout/PageWrapper";
 import { Button } from "@/components/ui/button";
 import { formatStudyDate } from "@/lib/utils";
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 type DeckDetailPageProps = {
   params: {
@@ -23,18 +24,40 @@ const dotClass: Record<string, string> = {
 };
 
 export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
-  const deck = await db.deck.findUnique({
-    where: {
-      id: params.id,
-    },
-    include: {
-      cards: {
-        orderBy: {
-          createdAt: "asc",
+  type DeckWithCards = Prisma.DeckGetPayload<{ include: { cards: true } }>;
+  let deck: DeckWithCards | null = null;
+
+  try {
+    deck = await db.deck.findUnique({
+      where: {
+        id: params.id,
+      },
+      include: {
+        cards: {
+          orderBy: {
+            createdAt: "asc",
+          },
         },
       },
-    },
-  });
+    });
+  } catch (err) {
+    console.error("[DECK_DETAIL_PAGE]", err);
+    return (
+      <PageWrapper>
+        <div className="mx-auto mt-16 max-w-xl rounded-2xl border border-red-500/20 bg-red-500/5 p-6">
+          <h2 className="text-lg font-semibold text-zinc-100">Couldn&apos;t load this deck</h2>
+          <p className="mt-2 text-sm text-zinc-400">
+            The server failed while fetching deck data. This is usually caused by a database configuration issue in production (missing/incorrect <code className="text-zinc-300">DATABASE_URL</code>).
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button asChild className="h-10 rounded-xl bg-violet-600 text-white hover:bg-violet-500">
+              <Link href="/decks">Back to Decks</Link>
+            </Button>
+          </div>
+        </div>
+      </PageWrapper>
+    );
+  }
 
   if (!deck) {
     notFound();

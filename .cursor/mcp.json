@@ -4,19 +4,7 @@
       "url": "https://mcp.vercel.com"
     },
     "supabase": {
-      "command": "cmd",
-      "args": [
-        "/c",
-        "npx",
-        "-y",
-        "@supabase/mcp-server-supabase@latest",
-        "--read-only",
-        "--project-ref",
-        "${SUPABASE_PROJECT_REF}"
-      ],
-      "env": {
-        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
-      }
+      "url": "https://mcp.supabase.com/mcp?project_ref=fwixrbiocgtoddevdtcx"
     }
   }
 }

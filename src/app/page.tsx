@@ -9,6 +9,9 @@ import StudyHeatmap from "@/components/shared/StudyHeatmap";
 import { getDashboardData } from "@/lib/stats";
 import { getGreetingByHour, formatRelativeDate } from "@/lib/utils";
 
+// Uses database-backed stats; must run at request time.
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const {
     totalCards,

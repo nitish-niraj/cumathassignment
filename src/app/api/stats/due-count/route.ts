@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getDueCount } from "@/lib/stats";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const count = await getDueCount();

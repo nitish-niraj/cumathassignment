@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { format } from "date-fns";
 
 type HeatmapData = {
@@ -13,6 +13,12 @@ type StudyHeatmapProps = {
 };
 
 export default function StudyHeatmap({ data }: StudyHeatmapProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // We want to render a 7x12 grid (rows x cols)
   // Ensure the data is sorted chronologically
   const sortedData = useMemo(() => {
@@ -52,6 +58,14 @@ export default function StudyHeatmap({ data }: StudyHeatmapProps) {
     
     return labels;
   };
+
+  if (!mounted) {
+    return (
+      <div className="w-full overflow-x-auto pb-4">
+        <div className="h-24 w-full animate-pulse rounded bg-zinc-800/30" />
+      </div>
+    );
+  }
 
   const monthLabels = getMonthLabels();
 

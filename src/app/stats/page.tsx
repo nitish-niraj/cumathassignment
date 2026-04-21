@@ -8,6 +8,9 @@ import CountUp from "@/components/shared/CountUp";
 import { db } from "@/lib/db";
 import { calculateStudyStreak } from "@/lib/stats";
 
+// Database-backed analytics; must run at request time (not at build time).
+export const dynamic = "force-dynamic";
+
 export default async function StatsPage() {
   const [cards, logs, decks] = await Promise.all([
     db.card.findMany({

@@ -9,10 +9,17 @@
 ## Tech Stack
 - **Framework:** Next.js 14 (App Router)
 - **Styling:** Tailwind CSS & Framer Motion
-- **Database:** Prisma (SQLite locally, extensible to Postgres via URL mapping)
+- **Database:** Prisma + PostgreSQL (Supabase)
 - **AI Processing:** OpenRouter (Claude-3.5 Sonnet mapping via OpenAI Client)
 - **Local Storage / Services:** Zustand
 - **PDF Extraction:** `pdf-parse`
+- **Deployment:** Vercel
+
+## ⚠️ Important: Database Setup Required
+
+This app requires PostgreSQL via Supabase. **SQLite does NOT work on Vercel** (ephemeral filesystem).
+
+👉 **See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for complete setup instructions** (takes 5 minutes)
 
 ## Setup Instructions
 
@@ -27,27 +34,36 @@ cd recall
 npm install
 ```
 
-### 3. Environment Setup
-Rename the `.env.example` file to `.env.local`:
+### 3. Database Setup (REQUIRED - see SUPABASE_SETUP.md)
+Follow the guide in [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) to:
+1. Create a free Supabase PostgreSQL project
+2. Get your connection string
+3. Set `DATABASE_URL` in `.env.local`
+
 ```bash
-cp .env.example .env.local
-```
-Add your explicit OpenRouter API Key internally:
-```env
+# Example .env.local after Supabase setup:
+DATABASE_URL="postgresql://postgres.xxx:password@db.supabase.co:5432/postgres?schema=public"
 OPENROUTER_API_KEY=your_key_here
 ```
 
-### 4. Database Boostrap
-Synchronize your local SQLite schema constraints:
+### 4. Run Migrations
 ```bash
-npx prisma generate
-npx prisma db push
+npm run prisma:migrate
 ```
 
-### 5. Run explicitly
+### 5. Run the app
 ```bash
 npm run dev
 ```
+
+## Deployment to Vercel
+
+After setup, deploy with:
+```bash
+npx vercel deploy --prod --yes
+```
+
+**Note:** Ensure `DATABASE_URL` is set in Vercel environment before deploying (see SUPABASE_SETUP.md Step 3)
 The interface is now hosted smoothly at `http://localhost:3000`
 
 ## MCP (Cursor) Setup

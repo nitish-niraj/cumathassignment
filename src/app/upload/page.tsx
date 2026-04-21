@@ -53,7 +53,10 @@ export default function UploadPage() {
   // ── File handling ─────────────────────────────────────────────────────────
   const handleFileSelect = (incoming: File | null) => {
     if (!incoming) return setFile(null);
-    if (incoming.type !== "application/pdf") return;
+    if (incoming.type !== "application/pdf") {
+      setError("Only PDF files are supported.");
+      return;
+    }
     setFile(incoming);
     setError(null);
   };

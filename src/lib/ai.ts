@@ -1,13 +1,27 @@
 import OpenAI from "openai";
 
 // ── Client ────────────────────────────────────────────────────────────────────
-// Instantiated at module scope so it is re-used across requests in the same
-// Node process lifetime. The OPENROUTER_API_KEY env var is NEVER sent to the
-// client — this file must only be imported from server-side code.
-const openrouter = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+// Lazily instantiated so builds don't fail when OPENROUTER_API_KEY is missing.
+// (Next/Vercel may import route modules during build to collect metadata.)
+let _openrouter: OpenAI | null = null;
+
+function getOpenRouterClient(): OpenAI {
+  if (_openrouter) return _openrouter;
+
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "Missing OPENROUTER_API_KEY. Set it in the environment to enable AI generation.",
+    );
+  }
+
+  _openrouter = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey,
+  });
+
+  return _openrouter;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface Flashcard {
@@ -75,21 +89,39 @@ ${chunk}`;
 
   let rawContent = "";
 
-  try {
-    const completion = await openrouter.chat.completions.create({
-      model: "openai/gpt-oss-120b:free",
-      temperature: 0.7,
-      max_tokens: 4000,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userMessage },
-      ],
-    });
+  // Try primary model first, then fallback
+  const models = [
+    "openai/gpt-oss-120b:free",
+    "nvidia/nemotron-3-super:free",
+  ];
 
-    rawContent = completion.choices[0]?.message?.content ?? "";
-  } catch (err) {
-    console.error(`[AI] API call failed for chunk ${chunkIndex}:`, err);
-    throw err;
+  let lastError: unknown = null;
+
+  for (const model of models) {
+    try {
+      const openrouter = getOpenRouterClient();
+      const completion = await openrouter.chat.completions.create({
+        model,
+        temperature: 0.7,
+        max_tokens: 4000,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userMessage },
+        ],
+      });
+
+      rawContent = completion.choices[0]?.message?.content ?? "";
+      if (rawContent) break; // success — stop trying fallbacks
+    } catch (err) {
+      console.warn(`[AI] Model ${model} failed for chunk ${chunkIndex}:`, err instanceof Error ? err.message : err);
+      lastError = err;
+      // Try next model
+    }
+  }
+
+  if (!rawContent && lastError) {
+    console.error(`[AI] All models failed for chunk ${chunkIndex}.`);
+    throw lastError;
   }
 
   // Strip possible markdown code fences
