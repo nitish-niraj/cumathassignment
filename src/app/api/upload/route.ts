@@ -8,6 +8,13 @@ export const runtime = "nodejs";
 // Allow up to 5 minutes — large PDFs + free-tier AI can be slow
 export const maxDuration = 300;
 
+type UploadStage =
+  | "database_preflight"
+  | "parsing"
+  | "chunking"
+  | "generating"
+  | "saving";
+
 function getPublicErrorMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : "";
 
@@ -114,6 +121,20 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // ── Database preflight (fail fast before expensive AI work) ────────────────
+  try {
+    await db.$queryRawUnsafe("SELECT 1");
+  } catch (err) {
+    console.error("[upload] Database preflight failed:", err);
+    return new Response(
+      JSON.stringify({
+        error: getPublicErrorMessage(err),
+        stage: "database_preflight",
+      }),
+      { status: 503, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   // Parse multipart form data
   let formData: FormData;
   try {
@@ -167,8 +188,10 @@ export async function POST(req: NextRequest) {
 
   // Run the pipeline asynchronously so we can return the response immediately
   (async () => {
+    let stage: UploadStage = "parsing";
     try {
       // 1. Parsing
+      stage = "parsing";
       writer.write(
         encode({ status: "parsing", message: "Reading your PDF…", progress: 5 }),
       );
@@ -189,6 +212,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. Chunking
+      stage = "chunking";
       writer.write(
         encode({
           status: "chunking",
@@ -201,6 +225,7 @@ export async function POST(req: NextRequest) {
       console.log(`[upload] ${chunks.length} chunks created`);
 
       // 3. AI generation (streaming progress)
+      stage = "generating";
       const cards = await generateFlashcardsFromPDF(
         chunks,
         title,
@@ -209,6 +234,7 @@ export async function POST(req: NextRequest) {
       );
 
       // 4. Saving
+      stage = "saving";
       writer.write(
         encode({
           status: "saving",
@@ -265,22 +291,29 @@ export async function POST(req: NextRequest) {
         }),
       );
     } catch (err) {
-      console.error("[upload] Pipeline error:", err);
+      console.error(`[upload] Pipeline error at stage "${stage}":`, err);
+      console.error("[upload] Pipeline error details:", {
+        stage,
+        errorType: err?.constructor?.name,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
       try {
-        writer.write(
+        await writer.write(
           encode({
             status: "error",
             message: getPublicErrorMessage(err),
+            stage,
           }),
         );
-      } catch {
-        // writer may already be closed
+      } catch (writeErr) {
+        console.error("[upload] Failed to write error to stream:", writeErr);
       }
     } finally {
       try {
-        writer.close();
-      } catch {
-        // already closed
+        await writer.close();
+      } catch (closeErr) {
+        console.error("[upload] Failed to close stream writer:", closeErr);
       }
     }
   })();

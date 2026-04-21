@@ -103,7 +103,11 @@ export default function UploadPage() {
 
       if (!response.ok) {
         const json = await response.json().catch(() => ({}));
-        throw new Error(json.error ?? "Upload failed");
+        const message =
+          typeof json.error === "string" ? json.error : "Upload failed";
+        const stageSuffix =
+          typeof json.stage === "string" ? ` (stage: ${json.stage})` : "";
+        throw new Error(`${message}${stageSuffix}`);
       }
 
       if (!response.body) throw new Error("No response stream");
@@ -111,61 +115,82 @@ export default function UploadPage() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let streamCompleted = false;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
 
-          try {
-            const update = JSON.parse(trimmed) as {
-              status: string;
-              message: string;
-              progress?: number;
-              deckId?: string;
-              cardCount?: number;
-            };
+            try {
+              const update = JSON.parse(trimmed) as {
+                status: string;
+                message: string;
+                progress?: number;
+                deckId?: string;
+                cardCount?: number;
+                stage?: string;
+              };
 
-            if (update.progress !== undefined) setProgress(update.progress);
-            if (update.message) setStatusMessage(update.message);
+              if (update.progress !== undefined) setProgress(update.progress);
+              if (update.message) setStatusMessage(update.message);
 
-            if (update.status === "error") {
-              setError(update.message);
-              setIsProcessing(false);
-              return;
+              if (update.status === "error") {
+                streamCompleted = true;
+                const stageSuffix = update.stage ? ` (stage: ${update.stage})` : "";
+                setError(`${update.message}${stageSuffix}`);
+                setIsProcessing(false);
+                return;
+              }
+
+              if (update.status === "complete" && update.deckId) {
+                streamCompleted = true;
+                setProgress(100);
+                setStatusMessage(`✨ ${update.cardCount} flashcards created!`);
+                setResult({
+                  deckId: update.deckId,
+                  cardCount: update.cardCount ?? 0,
+                });
+                setIsProcessing(false);
+                router.refresh();
+
+                // Fire confetti 🎉
+                confetti({
+                  particleCount: 80,
+                  spread: 60,
+                  decay: 0.9,
+                  origin: { x: 0.5, y: 0.5 },
+                  colors: ["#7c3aed", "#8b5cf6", "#a78bfa", "#71717a", "#d4d4d8"],
+                });
+                return;
+              }
+            } catch {
+              // Malformed JSON line — skip
             }
-
-            if (update.status === "complete" && update.deckId) {
-              setProgress(100);
-              setStatusMessage(`✨ ${update.cardCount} flashcards created!`);
-              setResult({
-                deckId: update.deckId,
-                cardCount: update.cardCount ?? 0,
-              });
-              setIsProcessing(false);
-              router.refresh();
-
-              // Fire confetti 🎉
-              confetti({
-                particleCount: 80,
-                spread: 60,
-                decay: 0.9,
-                origin: { x: 0.5, y: 0.5 },
-                colors: ["#7c3aed", "#8b5cf6", "#a78bfa", "#71717a", "#d4d4d8"],
-              });
-              return;
-            }
-          } catch {
-            // Malformed JSON line — skip
           }
         }
+
+        // Stream ended without a terminal "complete" or "error" message
+        if (!streamCompleted) {
+          setError("The upload process was interrupted. Please try again.");
+          setIsProcessing(false);
+        }
+      } catch (streamErr) {
+        console.error("[upload] Stream reading error:", streamErr);
+        setError(
+          streamErr instanceof Error
+            ? streamErr.message
+            : "Connection lost during upload. Please try again.",
+        );
+        setIsProcessing(false);
       }
     } catch (err) {
       console.error(err);
