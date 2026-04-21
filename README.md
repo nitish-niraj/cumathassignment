@@ -50,6 +50,27 @@ npm run dev
 ```
 The interface is now hosted smoothly at `http://localhost:3000`
 
+## MCP (Cursor) Setup
+
+This repo includes a project-local MCP config at `.cursor/mcp.json` with:
+- **Vercel MCP**: `https://mcp.vercel.com` (OAuth login in Cursor)
+- **Supabase MCP**: `@supabase/mcp-server-supabase` (local `npx` server)
+
+### Vercel MCP
+- Open Cursor → **Settings** → **Tools & MCP**
+- You should see `vercel` and a **Needs login** prompt
+- Click it and complete the OAuth flow
+
+### Supabase MCP
+Set these environment variables (Windows PowerShell):
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN="your_supabase_personal_access_token"
+$env:SUPABASE_PROJECT_REF="your_project_ref"
+```
+
+Then restart Cursor so it can start the `supabase` MCP server.
+
 ## Design Decisions
 - **SM-2 Algorithm Integration**: We leverage the industry-standard SM-2 algorithm mapping intervals dynamically adjusting ease-factors per review session natively ensuring maximum retention probabilities explicitly overriding fixed arrays without database heavy cron jobs.
 - **Micro-Interaction UI philosophy**: The design system heavily maps dark background components tracking minimal scale modifiers upon actions maintaining intensive focus for learners while retaining aesthetic brilliance. CSS confetti bursts map to perfection rating constraints reinforcing gamified habits effortlessly.
