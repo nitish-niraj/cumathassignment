@@ -1,6 +1,3 @@
-// Use the legacy build for Node.js / serverless environments.
-// The legacy build does not require web workers and is designed to run
-// directly in Node.js, avoiding all "fake worker" and workerSrc errors.
 import {
   getDocument,
   type PDFDocumentProxy,
@@ -22,6 +19,8 @@ export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
 
   const doc: PDFDocumentProxy = await getDocument({
     data,
+    // Serverless runtime: avoid external worker file resolution issues.
+    disableWorker: true,
     useSystemFonts: true,
     isEvalSupported: false,
     disableAutoFetch: true,
@@ -33,7 +32,6 @@ export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
   for (let i = 1; i <= pageCount; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
-    // Concatenate text items with spaces; respect line breaks via transform y-coordinates
     const items = content.items;
     let lastY: number | null = null;
     let line = "";
@@ -41,9 +39,8 @@ export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
 
     for (const item of items) {
       if (!("str" in item)) continue;
-      const y = item.transform[5]; // vertical position
+      const y = item.transform[5];
       if (lastY !== null && Math.abs(y - lastY) > 2) {
-        // New line
         lines.push(line);
         line = item.str;
       } else {
