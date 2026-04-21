@@ -1,6 +1,5 @@
 import {
   getDocument,
-  type DocumentInitParameters,
   type PDFDocumentProxy,
 } from "pdfjs-dist/legacy/build/pdf.mjs";
 
@@ -18,7 +17,7 @@ export interface PDFResult {
 export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
   const data = new Uint8Array(buffer);
 
-  const documentInit: DocumentInitParameters & { disableWorker?: boolean } = {
+  const documentInit = {
     data,
     // Serverless runtime: avoid external worker file resolution issues.
     disableWorker: true,
@@ -27,7 +26,9 @@ export async function parsePDF(buffer: Buffer): Promise<PDFResult> {
     disableAutoFetch: true,
   };
 
-  const doc: PDFDocumentProxy = await getDocument(documentInit).promise;
+  const doc: PDFDocumentProxy = await getDocument(
+    documentInit as unknown as Parameters<typeof getDocument>[0],
+  ).promise;
 
   const pageCount = doc.numPages;
   const pageTexts: string[] = [];
